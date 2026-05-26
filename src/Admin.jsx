@@ -112,6 +112,8 @@ function AdminDashboard({ admin, onLogout }) {
     { key: "tambah_santri", label: "➕ Tambah Santri" },
     { key: "semester", label: "📅 Semester" },
     { key: "pengingat", label: "🔔 Pengingat" },
+    { key: "riwayat_bayar", label: "📜 Riwayat Bayar" },
+    { key: "riwayat_notif", label: "📨 Riwayat Notif WA" },
   ];
 
   return (
@@ -156,6 +158,8 @@ function AdminDashboard({ admin, onLogout }) {
         {menu === "tambah_santri" && <TambahSantri headers={headers} onRefresh={() => { loadSantri(); setMenu("santri"); }} />}
         {menu === "pengingat" && <Pengingat santri={santri} headers={headers} />}
         {menu === "semester" && <ManajemenSemester santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
+        {menu === "riwayat_bayar" && <RiwayatPembayaran headers={headers} />}
+        {menu === "riwayat_notif" && <RiwayatNotif headers={headers} />}
       </div>
     </div>
   );
@@ -2349,7 +2353,187 @@ const btnGreen = { background: "#059669", color: "white", border: "none", border
 const btnBlue = { background: "#3b82f6", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnRed = { background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnGray = { background: "#6b7280", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+// ============================================================
+// RIWAYAT PEMBAYARAN
+// ============================================================
+function RiwayatPembayaran({ headers }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    axios.get(`${API}/riwayat-pembayaran`, { headers })
+      .then(r => { setData(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const filtered = data.filter(r =>
+    (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.nama_wali || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.jenis_tagihan || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: 12, fontSize: 18, fontWeight: 700 }}>📜 Riwayat Pembayaran</h2>
+      <input
+        placeholder="Cari nama santri / jenis tagihan..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", width: "100%", marginBottom: 12, fontSize: 14, boxSizing: "border-box" }}
+      />
+      <div style={{ background: "#e8f5e9", borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
+        💰 Total Terbayar: {formatRupiah(totalBayar)} — {filtered.length} transaksi
+      </div>
+      {loading ? <p>Memuat data...</p> : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                {["Tanggal","Nama Santri","Kelas","Jenis Tagihan","Dibayar","Total Tagihan","Keterangan"].map(h => (
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
+              )}
+              {filtered.map((r, i) => (
+                <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                    {r.tanggal_bayar ? new Date(r.tanggal_bayar).toLocaleDateString("id-ID") : "-"}
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.nama_siswa}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.kelas}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.jenis_tagihan}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#16a34a", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {formatRupiah(r.jumlah_bayar)}
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                    {formatRupiah(r.total_tagihan)}
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{r.keterangan || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// RIWAYAT NOTIFIKASI WA
+// ============================================================
+function RiwayatNotif({ headers }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    axios.get(`${API}/riwayat-notif`, { headers })
+      .then(r => { setData(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = data.filter(r =>
+    (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.nama_wali || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.jenis_notif || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const labelJenis = (j) => ({
+    tagihan_baru: "📋 Tagihan Baru",
+    tagihan_lunas: "✅ Lunas Manual",
+    pembayaran_lunas: "✅ Bayar Lunas",
+    pembayaran_cicilan: "💰 Cicilan",
+    pengingat_otomatis: "🔔 Pengingat Otomatis",
+    pengingat_manual: "🔔 Pengingat Manual",
+  }[j] || j || "-");
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: 12, fontSize: 18, fontWeight: 700 }}>📨 Riwayat Notifikasi WhatsApp</h2>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <input
+          placeholder="Cari nama santri / jenis notif..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14 }}
+        />
+        <button onClick={load} style={{ padding: "8px 16px", borderRadius: 8, background: "#0ea5e9", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+          🔄 Refresh
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <div style={{ background: "#dcfce7", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>
+          ✅ Terkirim: {filtered.filter(r => r.status === "terkirim").length}
+        </div>
+        <div style={{ background: "#fee2e2", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>
+          ❌ Gagal: {filtered.filter(r => r.status === "gagal").length}
+        </div>
+        <div style={{ background: "#f1f5f9", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>
+          📊 Total: {filtered.length}
+        </div>
+      </div>
+      {loading ? <p>Memuat data...</p> : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                {["Waktu","Nama Santri","No WA","Jenis","Status","Pesan"].map(h => (
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada log notifikasi</td></tr>
+              )}
+              {filtered.map((r, i) => (
+                <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap", fontSize: 12 }}>
+                    {r.created_at ? new Date(r.created_at).toLocaleString("id-ID") : "-"}
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ fontWeight: 600 }}>{r.nama_siswa}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{r.nama_wali}</div>
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", fontSize: 12 }}>{r.no_hp}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{labelJenis(r.jenis_notif)}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", textAlign: "center" }}>
+                    <span style={{
+                      background: r.status === "terkirim" ? "#dcfce7" : "#fee2e2",
+                      color: r.status === "terkirim" ? "#16a34a" : "#dc2626",
+                      borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600
+                    }}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                    <details>
+                      <summary style={{ cursor: "pointer", color: "#0ea5e9", fontSize: 12 }}>Lihat pesan</summary>
+                      <pre style={{ marginTop: 6, fontSize: 11, whiteSpace: "pre-wrap", background: "#f8fafc", padding: 8, borderRadius: 6, maxWidth: 300 }}>
+                        {r.pesan}
+                      </pre>
+                    </details>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 export default function Admin() {
   const [admin, setAdmin] = useState(() => {
     const token = localStorage.getItem("adminToken");
