@@ -346,7 +346,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
             <TombolExport elId="rekap-semua" filename="Rekap-Keuangan-Keseluruhan" exporting={exporting} setExporting={setExporting} disabled={loading} />
           </div>
           <div id="rekap-semua" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
-            <HeaderLaporan subtitle="Laporan Keuangan Keseluruhan" logoBase64={logoBase64} />
+            <HeaderLaporan subtitle="Laporan Keuangan Keseluruhan"  />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
               {[
                 { label: "Total Tagihan Semua Santri", value: formatRupiah(totalTagihan), color: "#1e40af", bg: "#eff6ff", icon: "📋" },
@@ -461,7 +461,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 
                 {/* Area capture */}
                 <div id="rekap-persantri" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
-                  <HeaderLaporan subtitle={`Rekap Keuangan Santri`} logoBase64={logoBase64} />
+                  <HeaderLaporan subtitle={`Rekap Keuangan Santri`}  />
 
                   {/* Identitas santri */}
                   <div style={{ background: "white", borderRadius: 12, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
