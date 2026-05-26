@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-const API = (import.meta.env.VITE_API_URL || "http://localhost:5000/api") + "/admin";
+const API = "https://pesantren-backend.vercel.app/api/admin";
 const formatRupiah = (n) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
 // ============================================================
