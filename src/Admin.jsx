@@ -255,8 +255,7 @@ function HeaderLaporan({ subtitle, logoBase64 }) {
       <div style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}>
         {logoBase64
           ? <img src={logoBase64} style={{ width: 44, height: 44, objectFit: "cover", display: "block" }} />
-          : <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🕌</div>
-        }
+         : <img src="/Mu.png" style={{ width: 44, height: 44, objectFit: "cover", display: "block" }} />
       </div>
       <div>
         <div style={{ fontWeight: 800, fontSize: 15, color: "white" }}>PP. MUHAMMADIYAH MAMBAUL ULUM</div>
