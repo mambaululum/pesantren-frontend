@@ -247,19 +247,7 @@ function TombolExport({ elId, filename, exporting, setExporting, disabled }) {
 }
 
 // Header laporan standar untuk capture
-// Konversi gambar URL ke base64 agar html2canvas bisa render
-const toBase64 = (url) => new Promise((resolve) => {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = () => {
-    const c = document.createElement("canvas");
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext("2d").drawImage(img, 0, 0);
-    resolve(c.toDataURL("image/png"));
-  };
-  img.onerror = () => resolve(null);
-  img.src = url + "?t=" + Date.now();
-});
+
 
 function HeaderLaporan({ subtitle }) {
   return (
