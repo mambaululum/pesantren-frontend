@@ -1,0 +1,22 @@
+{
+  "name": "Portal Keuangan PP. Mambaul Ulum",
+  "short_name": "Mambaul Ulum",
+  "description": "Sistem Informasi Keuangan Santri PP. Muhammadiyah Mambaul Ulum",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/Mu.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/Mu.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
