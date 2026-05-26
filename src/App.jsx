@@ -47,8 +47,7 @@ function LoginPage({ onLogin }) {
             <div style={styles.logoSub}>Portal Keuangan Orang Tua</div>
           </div>
         </div>
-        <div style={styles.loginTitle}>Selamat Datang</div>
-        <div style={styles.formGroup}>
+        <div style={styles.loginTitle}>Ahlan Wa Sahlan</div>        <div style={styles.formGroup}>
           <label style={styles.label}>Username</label>
           <input style={styles.input} type="text" placeholder="Masukkan username"
             value={username} onChange={e => setUsername(e.target.value)}
@@ -256,7 +255,7 @@ function Dashboard({ user, onLogout }) {
           <img src="/Mu.jpg" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Portal Keuangan Orang Tua</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Sistem Informasi Keuangan Santri</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
