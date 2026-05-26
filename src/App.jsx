@@ -47,7 +47,7 @@ function InstallButton() {
           width: "100%",
           background: "linear-gradient(135deg, #059669, #047857)",
           color: "white", border: "none", borderRadius: 10, padding: 14,
-          fontSize: 15, fontWeight: 600, cursor: "pointer"
+          fontSize: 10, fontWeight: 600, cursor: "pointer"
         }}>
           📲 Install Aplikasi
         </button>
