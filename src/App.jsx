@@ -121,8 +121,9 @@ function LoginPage({ onLogin }) {
 <InstallButton />
 
 {/* Tombol Admin */}
+{window.location.pathname !== "/admin" && (
 <div style={{ marginTop: 14, borderTop: "1px solid #f1f5f9", paddingTop: 14 }}>
-  <a href="/admin/login" style={{
+  <a href="/admin" style={{
     display: "block", width: "100%", textAlign: "center",
     background: "#f8fafc", border: "1.5px solid #e2e8f0",
     borderRadius: 10, padding: 12, fontSize: 14,
@@ -132,6 +133,7 @@ function LoginPage({ onLogin }) {
     🔐 Masuk sebagai Admin
   </a>
 </div>
+)}
       </div>
     </div>
   );
