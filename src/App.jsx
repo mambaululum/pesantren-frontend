@@ -44,11 +44,13 @@ function InstallButton() {
     <div style={{ marginTop: 10 }}>
       {bisa ? (
         <button onClick={() => deferredPrompt?.prompt()} style={{
+          width: "100%",
           background: "linear-gradient(135deg, #059669, #047857)",
-          color: "white", border: "none", borderRadius: 10, padding: 14,
-          fontSize: 10, fontWeight: 400, cursor: "pointer"
+          color: "white", border: "none", borderRadius: 10, padding: 12,
+          fontSize: 14, fontWeight: 600, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8
         }}>
-          klik install aplikasi
+          📲 Klik Install Aplikasi
         </button>
       ) : (
         <div style={{
@@ -71,6 +73,24 @@ function LoginPage({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    });
+    window.addEventListener("appinstalled", () => setInstalled(true));
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setInstallPrompt(null);
+  };
 
   const handleLogin = async () => {
     if (!username || !password) { setError("Username dan password wajib diisi."); return; }
