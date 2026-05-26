@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Admin from "./Admin";
-
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered'))
+      .catch(err => console.log('SW error:', err));
+  });
+}
 const API = "https://pesantren-backend.vercel.app/api";
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
