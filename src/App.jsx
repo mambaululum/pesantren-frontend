@@ -41,7 +41,7 @@ function LoginPage({ onLogin }) {
     <div style={styles.loginBg}>
       <div style={styles.loginCard}>
         <div style={styles.loginLogo}>
-          <img src="/Mu.jpg" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} alt="logo" />
+          <img src="/Mu.png" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={styles.logoSchool}>PP. Muhammadiyah Mambaul Ulum</div>
             <div style={styles.logoSub}>Sistem Informasi Keuangan Santri</div>
@@ -253,7 +253,7 @@ function Dashboard({ user, onLogout }) {
       {/* HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Mu.jpg" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
+          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Sistem Informasi Keuangan Santri</div>
