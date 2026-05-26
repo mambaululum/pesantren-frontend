@@ -106,7 +106,7 @@ function AdminDashboard({ admin, onLogout }) {
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui,sans-serif" }}>
       <header style={{ background: "linear-gradient(135deg, #064e3b, #065f46)", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
+          <img src="/Mu.jpg" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>Dashboard Admin</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>PP. Muhammadiyah Mambaul Ulum</div>
@@ -275,7 +275,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
   const [logoBase64, setLogoBase64] = useState(null);
 
   useEffect(() => {
-    toBase64("/Mu.png").then(b64 => { if (b64) setLogoBase64(b64); });
+    toBase64("/Mu.jpg").then(b64 => { if (b64) setLogoBase64(b64); });
   }, []);
 
 
