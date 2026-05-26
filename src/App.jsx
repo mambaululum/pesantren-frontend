@@ -3,7 +3,12 @@ import axios from "axios";
 import Admin from "./Admin";
 
 const API = "https://pesantren-backend.vercel.app/api";
-
+const API = "https://pesantren-backend.vercel.app/api";
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
 const formatRupiah = (n) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
@@ -13,7 +18,37 @@ const formatTanggal = (d) => {
   const bulan = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
   return `${dt.getDate()} ${bulan[dt.getMonth()]} ${dt.getFullYear()}`;
 };
+function InstallButton() {
+  const [bisa, setBisa] = useState(false);
+  const [installed, setInstalled] = useState(false);
 
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); deferredPrompt = e; setBisa(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+    if (deferredPrompt) setBisa(true);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  if (installed) return (
+    <div style={{ textAlign: "center", fontSize: 13, color: "#059669", marginTop: 10 }}>
+      ✅ Aplikasi berhasil diinstall!
+    </div>
+  );
+
+  if (!bisa) return null;
+
+  return (
+    <button onClick={() => { deferredPrompt?.prompt(); }} style={{
+      width: "100%", marginTop: 10,
+      background: "linear-gradient(135deg, #059669, #047857)",
+      color: "white", border: "none", borderRadius: 10, padding: 14,
+      fontSize: 15, fontWeight: 600, cursor: "pointer"
+    }}>
+      📲 Install Aplikasi
+    </button>
+  );
+}
 // ============================================================
 // LOGIN PAGE
 // ============================================================
@@ -70,7 +105,7 @@ function LoginPage({ onLogin }) {
         <button style={styles.loginBtn} onClick={handleLogin} disabled={loading}>
           {loading ? "Memuat..." : "Masuk"}
         </button>
-        
+<installbutton />
       </div>
     </div>
   );
