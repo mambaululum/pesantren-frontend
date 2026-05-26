@@ -48,14 +48,14 @@ function InstallButton() {
           color: "white", border: "none", borderRadius: 10, padding: 14,
           fontSize: 10, fontWeight: 400, cursor: "pointer"
         }}>
-          ket: 📲 install aplikasi
+          klik install aolikasi
         </button>
       ) : (
         <div style={{
           background: "#f0fdf4", border: "1px solid #bbf7d0",
           borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#166534"
         }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>ket: 📲 install aplikasi</div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>klik install aolikasi</div>
           <div>Buka di <b>Chrome Android</b>, lalu ketuk menu <b>⋮</b> → <b>"Tambahkan ke layar utama"</b></div>
         </div>
       )}
