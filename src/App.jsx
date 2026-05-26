@@ -70,12 +70,7 @@ function LoginPage({ onLogin }) {
         <button style={styles.loginBtn} onClick={handleLogin} disabled={loading}>
           {loading ? "Memuat..." : "Masuk"}
         </button>
-
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-      <a href="/admin" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>
-        🔐 Login sebagai Admin
-      </a>
-    </div>
+        
       </div>
     </div>
   );
