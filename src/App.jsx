@@ -207,7 +207,7 @@ function InfoPembayaran({ copied, setCopied }) {
             <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>
               {BANK} · a.n <span style={{ fontWeight: 600, color: "#374151" }}>{NAMA_REKENING}</span>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", letterSpacing: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", letterSpacing: 1 }}>
               {REKENING}
             </div>
           </div>
