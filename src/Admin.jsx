@@ -3,7 +3,19 @@ import axios from "axios";
 
 const API = "https://pesantren-backend.vercel.app/api/admin";
 const formatRupiah = (n) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
-
+const toBase64 = (url) => new Promise((resolve) => {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    resolve(canvas.toDataURL("image/png"));
+  };
+  img.onerror = () => resolve(null);
+  img.src = url + "?t=" + Date.now();
+});
 // ============================================================
 // LOGIN ADMIN
 // ============================================================
