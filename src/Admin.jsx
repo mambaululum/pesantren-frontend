@@ -1731,122 +1731,16 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
 // ============================================================
 // TAMBAH SANTRI BARU
 // ============================================================
-function TambahSantri({ headers, onRefresh, santri }) {
-  const [form, setForm] = useState({ username: "", password: "", nama: "", nama_siswa: "", kelas: "", no_hp: "" });
+function TambahSantri({ headers, onRefresh }) {
+  const [form, setForm] = useState({ username: "", password: "", nama: "", nama_siswa: "", kelas: "" });
   const [showPass, setShowPass] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [salinDari, setSalinDari] = useState("");
-  const [tagihanSalin, setTagihanSalin] = useState([]);
-  const [loadingSalin, setLoadingSalin] = useState(false);
-
-  const handlePilihSantri = async (userId) => {
-    setSalinDari(userId);
-    if (!userId) { setTagihanSalin([]); return; }
-    setLoadingSalin(true);
-    try {
-      const res = await axios.get(`${API}/tagihan/${userId}`, { headers });
-      setTagihanSalin(res.data);
-    } catch (e) { setTagihanSalin([]); }
-    setLoadingSalin(false);
-  };
 
   const handleSubmit = async () => {
     if (!form.username || !form.password || !form.nama || !form.nama_siswa || !form.kelas) {
-      setMsg("⚠️ Semua field wajib diisi!"); return;
+      setMsg("❌ Semua kolom wajib diisi!"); return;
     }
-    setLoading(true); setMsg("");
-    try {
-      const res = await axios.post(`${API}/santri`, form, { headers });
-      const newId = res.data.id;
-
-      // Salin tagihan jika dipilih
-      if (salinDari && tagihanSalin.length > 0) {
-        for (const t of tagihanSalin) {
-          await axios.post(`${API}/tagihan`, {
-            user_id: newId,
-            jenis: t.jenis,
-            jumlah: t.jumlah,
-            tanggal_bayar: null,
-            status: "belum",
-            semester: t.semester || "",
-            kirim_notif: false
-          }, { headers });
-        }
-        setMsg(`✅ Santri berhasil ditambahkan + ${tagihanSalin.length} tagihan disalin!`);
-      } else {
-        setMsg("✅ Santri berhasil ditambahkan!");
-      }
-
-      setForm({ username: "", password: "", nama: "", nama_siswa: "", kelas: "", no_hp: "" });
-      setSalinDari(""); setTagihanSalin([]);
-      setTimeout(() => { setMsg(""); onRefresh(); }, 2000);
-    } catch (e) {
-      setMsg("❌ Gagal: " + (e.response?.data?.message || e.message));
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ maxWidth: 500, margin: "0 auto" }}>
-      <div style={{ background: "white", borderRadius: 14, padding: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 20 }}>➕ Tambah Santri Baru</div>
-        {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
-
-        <div style={{ display: "grid", gap: 12 }}>
-          <div><label style={lStyle}>Nama Wali</label><input style={iStyle} placeholder="Nama orang tua/wali" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
-          <div><label style={lStyle}>Nama Siswa</label><input style={iStyle} placeholder="Nama lengkap santri" value={form.nama_siswa} onChange={e => setForm({ ...form, nama_siswa: e.target.value })} /></div>
-          <div>
-            <label style={lStyle}>Kelas</label>
-            <select style={iStyle} value={form.kelas} onChange={e => setForm({ ...form, kelas: e.target.value })}>
-              <option value="">-- Pilih Kelas --</option>
-              {["Kelas 1","Kelas 2","Kelas 3","Kelas 4","Kelas 5","Kelas 6"].map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
-          </div>
-          <div><label style={lStyle}>No. HP Wali (WhatsApp)</label><input style={iStyle} placeholder="08xxxxxxxxxx" value={form.no_hp || ""} onChange={e => setForm({ ...form, no_hp: e.target.value })} /></div>
-          <div><label style={lStyle}>Username Login</label><input style={iStyle} placeholder="contoh: ahmad.rifadi" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></div>
-          <div>
-            <label style={lStyle}>Password</label>
-            <div style={{ position: "relative" }}>
-              <input style={{ ...iStyle, paddingRight: 44 }} type={showPass ? "text" : "password"} placeholder="Minimal 6 karakter" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-              <button onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>{showPass ? "🙈" : "👁️"}</button>
-            </div>
-          </div>
-        </div>
-
-        {/* SALIN TAGIHAN */}
-        <div style={{ marginTop: 20, padding: 16, background: "#eff6ff", borderRadius: 10, border: "1px solid #bfdbfe" }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "#1e40af", marginBottom: 8 }}>📋 Salin Tagihan dari Santri Lain (Opsional)</div>
-          <select style={iStyle} value={salinDari} onChange={e => handlePilihSantri(e.target.value)}>
-            <option value="">-- Tidak menyalin tagihan --</option>
-            {[...santri].sort((a,b) => a.nama_siswa.localeCompare(b.nama_siswa)).map(s => (
-              <option key={s.id} value={s.id}>{s.nama_siswa} ({s.kelas})</option>
-            ))}
-          </select>
-          {loadingSalin && <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>⏳ Memuat tagihan...</div>}
-          {tagihanSalin.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 12, color: "#1e40af", fontWeight: 600, marginBottom: 6 }}>Tagihan yang akan disalin ({tagihanSalin.length} tagihan):</div>
-              {tagihanSalin.map(t => (
-                <div key={t.id} style={{ fontSize: 12, color: "#374151", padding: "4px 8px", background: "white", borderRadius: 6, marginBottom: 4, display: "flex", justifyContent: "space-between" }}>
-                  <span>{t.jenis} {t.semester ? `(${t.semester})` : ""}</span>
-                  <span style={{ fontWeight: 600, color: "#1e40af" }}>Rp {Number(t.jumlah).toLocaleString("id-ID")}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ marginTop: 16, padding: 14, background: "#f0fdf4", borderRadius: 10, fontSize: 13, color: "#065f46" }}>
-          💡 Salin tagihan untuk menduplikat jenis tagihan santri lain ke santri baru (status akan direset ke belum bayar).
-        </div>
-        <button style={{ ...btnGreen, marginTop: 16, width: "100%", padding: 14, fontSize: 15 }} onClick={handleSubmit} disabled={loading}>
-          {loading ? "Menyimpan..." : salinDari && tagihanSalin.length > 0 ? `✅ Tambah Santri + Salin ${tagihanSalin.length} Tagihan` : "✅ Tambah Santri & Buat Akun"}
-        </button>
-      </div>
-    </div>
-  );
-
     setLoading(true);
     try {
       await axios.post(`${API}/santri`, form, { headers });
@@ -1894,8 +1788,8 @@ function TambahSantri({ headers, onRefresh, santri }) {
         </button>
       </div>
     </div>
- );
-
+  );
+}
 
 
 // ============================================================
