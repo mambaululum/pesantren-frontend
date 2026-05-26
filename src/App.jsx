@@ -3,7 +3,6 @@ import axios from "axios";
 import Admin from "./Admin";
 
 const API = "https://pesantren-backend.vercel.app/api";
-const API = "https://pesantren-backend.vercel.app/api";
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
@@ -23,7 +22,11 @@ function InstallButton() {
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const handler = (e) => { e.preventDefault(); deferredPrompt = e; setBisa(true); };
+    const handler = (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      setBisa(true);
+    };
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", () => setInstalled(true));
     if (deferredPrompt) setBisa(true);
@@ -36,17 +39,28 @@ function InstallButton() {
     </div>
   );
 
-  if (!bisa) return null;
-
+  // Selalu tampil — panduan manual jika tidak support
   return (
-    <button onClick={() => { deferredPrompt?.prompt(); }} style={{
-      width: "100%", marginTop: 10,
-      background: "linear-gradient(135deg, #059669, #047857)",
-      color: "white", border: "none", borderRadius: 10, padding: 14,
-      fontSize: 15, fontWeight: 600, cursor: "pointer"
-    }}>
-      📲 Install Aplikasi
-    </button>
+    <div style={{ marginTop: 10 }}>
+      {bisa ? (
+        <button onClick={() => deferredPrompt?.prompt()} style={{
+          width: "100%",
+          background: "linear-gradient(135deg, #059669, #047857)",
+          color: "white", border: "none", borderRadius: 10, padding: 14,
+          fontSize: 15, fontWeight: 600, cursor: "pointer"
+        }}>
+          📲 Install Aplikasi
+        </button>
+      ) : (
+        <div style={{
+          background: "#f0fdf4", border: "1px solid #bbf7d0",
+          borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#166534"
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>📲 Install Aplikasi</div>
+          <div>Buka di <b>Chrome Android</b>, lalu ketuk menu <b>⋮</b> → <b>"Tambahkan ke layar utama"</b></div>
+        </div>
+      )}
+    </div>
   );
 }
 // ============================================================
@@ -598,7 +612,7 @@ export default function App() {
 const styles = {
   loginBg: {
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #1e3a8a, #0369a1)",
+    background: "linear-gradient(135deg, #064e3b, #065f46, #047857)",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontFamily: "system-ui, sans-serif"
   },
@@ -624,7 +638,7 @@ const styles = {
     padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 14
   },
   loginBtn: {
-    width: "100%", background: "linear-gradient(135deg, #1e40af, #0369a1)",
+    width: "100%", background: "linear-gradient(135deg, #065f46, #047857)",
     color: "white", border: "none", borderRadius: 10, padding: 14,
     fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 4
   },
