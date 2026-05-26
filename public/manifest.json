@@ -1,5 +1,5 @@
 {
-  "name": "Portal Keuangan PP. Mambaul Ulum",
+  "name": "Data Pembayaran Sapi",
   "short_name": "Mambaul Ulum",
   "description": "Sistem Informasi Keuangan Santri PP. Muhammadiyah Mambaul Ulum",
   "start_url": "/",
@@ -11,12 +11,12 @@
     {
       "src": "/Mu.png",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/png"
     },
     {
       "src": "/Mu.png",
       "sizes": "512x512",
-      "type": "image/jpeg"
+      "type": "image/png"
     }
   ]
 }
