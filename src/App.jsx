@@ -44,7 +44,7 @@ function LoginPage({ onLogin }) {
           <img src="/Mu.jpg" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={styles.logoSchool}>PP. Muhammadiyah Mambaul Ulum</div>
-            <div style={styles.logoSub}>Portal Keuangan Orang Tua</div>
+            <div style={styles.logoSub}>Sistem Informasi Keuangan Santri</div>
           </div>
         </div>
         <div style={styles.loginTitle}>Ahlan Wa Sahlan</div>        <div style={styles.formGroup}>
