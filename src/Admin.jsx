@@ -265,9 +265,7 @@ function HeaderLaporan({ subtitle, logoBase64 }) {
   return (
     <div style={{ background: "linear-gradient(135deg, #064e3b, #065f46)", borderRadius: 12, padding: "14px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", background: "rgba(255,255,255,0.15)", flexShrink: 0 }}>
-        {logoBase64
-          ? <img src={logoBase64} style={{ width: 44, height: 44, objectFit: "cover", display: "block" }} />
-         : <img src="/Mu.png" style={{ width: 44, height: 44, objectFit: "cover", display: "block" }} />
+ <img src="/Mu.png" style={{ width: 44, height: 44, objectFit: "cover", display: "block" }} />
       </div>
       <div>
         <div style={{ fontWeight: 800, fontSize: 15, color: "white" }}>PP. MUHAMMADIYAH MAMBAUL ULUM</div>
