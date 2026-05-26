@@ -519,12 +519,34 @@ function Dashboard({ user, onLogout }) {
 // ROOT
 // ============================================================
 export default function App() {
-  const [user, setUser] = useState(null);
   const isAdmin = window.location.pathname === "/admin";
   if (isAdmin) return <Admin />;
+
+  // Baca user dari localStorage saat pertama load
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+    if (token && savedUser) {
+      try { return JSON.parse(savedUser); }
+      catch { return null; }
+    }
+    return null;
+  });
+
+  const handleLogin = (userData) => {
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
   return user
-    ? <Dashboard user={user} onLogout={() => setUser(null)} />
-    : <LoginPage onLogin={setUser} />;
+    ? <Dashboard user={user} onLogout={handleLogout} />
+    : <LoginPage onLogin={handleLogin} />;
 }
 
 // ============================================================
