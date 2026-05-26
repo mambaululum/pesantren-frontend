@@ -2354,6 +2354,27 @@ const btnRed = { background: "#ef4444", color: "white", border: "none", borderRa
 const btnGray = { background: "#6b7280", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 
 export default function Admin() {
-  const [admin, setAdmin] = useState(null);
-  return admin ? <AdminDashboard admin={admin} onLogout={() => setAdmin(null)} /> : <AdminLogin onLogin={setAdmin} />;
+  const [admin, setAdmin] = useState(() => {
+    const token = localStorage.getItem("adminToken");
+    const saved = localStorage.getItem("adminUser");
+    if (token && saved) {
+      try { return JSON.parse(saved); } catch { return null; }
+    }
+    return null;
+  });
+
+  const handleLogin = (adminData) => {
+    localStorage.setItem("adminUser", JSON.stringify(adminData));
+    setAdmin(adminData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    setAdmin(null);
+  };
+
+  return admin
+    ? <AdminDashboard admin={admin} onLogout={handleLogout} />
+    : <AdminLogin onLogin={handleLogin} />;
 }
