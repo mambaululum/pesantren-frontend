@@ -46,7 +46,7 @@ function InstallButton() {
         <button onClick={() => deferredPrompt?.prompt()} style={{
           background: "linear-gradient(135deg, #059669, #047857)",
           color: "white", border: "none", borderRadius: 10, padding: 14,
-          fontSize: 8, fontWeight: 400, cursor: "pointer"
+          fontSize: 10, fontWeight: 400, cursor: "pointer"
         }}>
           ket: 📲 install aplikasi
         </button>
