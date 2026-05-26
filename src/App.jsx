@@ -519,6 +519,14 @@ function Dashboard({ user, onLogout }) {
 // ============================================================
 export default function App() {
   const isAdmin = window.location.pathname === "/admin";
+
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
+    const theme = document.querySelector('meta[name="theme-color"]');
+    if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
+  }, []);
+
   if (isAdmin) return <Admin />;
 
   // Baca user dari localStorage saat pertama load
