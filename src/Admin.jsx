@@ -274,7 +274,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
   const [logoBase64, setLogoBase64] = useState(null);
 
   useEffect(() => {
-    toBase64("/Mu.jpg").then(b64 => { if (b64) setLogoBase64(b64); });
+    toBase64("/Mu.png").then(b64 => { if (b64) setLogoBase64(b64); });
   }, []);
 
 
