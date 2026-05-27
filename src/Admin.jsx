@@ -40,8 +40,8 @@ function AdminLogin({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #064e3b, #065f46)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui,sans-serif" }}>
-      <div style={{ background: "white", borderRadius: 20, padding: 40, width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #064e3b, #065f46)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui,sans-serif", padding: "16px" }}>
+      <div style={{ background: "white", borderRadius: 20, padding: "32px 24px", width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid #f1f5f9" }}>
           <img src="/Mu.png" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} />
           <div>
@@ -52,7 +52,7 @@ function AdminLogin({ onLogin }) {
         <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Login Admin</div>
         <div style={{ marginBottom: 16 }}>
           <label style={lStyle}>Username</label>
-          <input style={iStyle} type="text" placeholder="Username admin" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <input style={{ ...iStyle, fontSize: 16 }} type="text" placeholder="Username admin" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={lStyle}>Password</label>
@@ -118,29 +118,29 @@ function AdminDashboard({ admin, onLogout }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui,sans-serif" }}>
-      <header style={{ background: "linear-gradient(135deg, #064e3b, #065f46)", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <header style={{ background: "linear-gradient(135deg, #064e3b, #065f46)", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
+          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>Dashboard Admin</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>PP. Muhammadiyah Mambaul Ulum</div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "white", lineHeight: 1.3 }}>Dashboard Admin</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>PP. Muhammadiyah Mambaul Ulum</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ color: "white", fontSize: 13 }}>👤 {admin.nama}</span>
-          <button style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "6px 14px", color: "white", cursor: "pointer", fontSize: 13 }} onClick={handleLogout}>Keluar</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: "white", fontSize: 12 }}>👤 {admin.nama}</span>
+          <button style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "8px 14px", color: "white", cursor: "pointer", fontSize: 13, minHeight: 40 }} onClick={handleLogout}>Keluar</button>
         </div>
       </header>
 
-      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 24px", display: "flex", gap: 4, overflowX: "auto" }}>
+      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {menus.map(m => (
-          <button key={m.key} onClick={() => setMenu(m.key)} style={{ padding: "14px 14px", border: "none", background: "none", borderBottom: menu === m.key ? "3px solid #059669" : "3px solid transparent", color: menu === m.key ? "#059669" : "#64748b", fontWeight: menu === m.key ? 700 : 500, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>
+          <button key={m.key} onClick={() => setMenu(m.key)} style={{ padding: "14px 12px", border: "none", background: "none", borderBottom: menu === m.key ? "3px solid #059669" : "3px solid transparent", color: menu === m.key ? "#059669" : "#64748b", fontWeight: menu === m.key ? 700 : 500, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", minHeight: 48, flexShrink: 0 }}>
             {m.label}
           </button>
         ))}
       </div>
 
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "20px 16px" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}>
         {menu === "rekap" && (
           <RekapKeuangan
             santri={santri}
@@ -339,7 +339,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
           </div>
           <div id="rekap-semua" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
             <HeaderLaporan subtitle="Laporan Keuangan Keseluruhan"  />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
               {[
                 { label: "Total Tagihan Semua Santri", value: formatRupiah(totalTagihan), color: "#1e40af", bg: "#eff6ff", icon: "📋" },
                 { label: "Total Terbayar", value: formatRupiah(totalTerbayar), color: "#065f46", bg: "#ecfdf5", icon: "✅" },
@@ -355,7 +355,8 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
             <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, fontSize: 13, background: "#f8fafc" }}>👥 Daftar Semua Santri</div>
               {loading ? <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>Memuat data...</div> : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 520 }}>
                   <thead>
                     <tr style={{ background: "#f1f5f9" }}>
                       {["No", "Nama Santri", "Kelas", "Total Tagihan", "Sudah Bayar", "Tunggakan", "Status"].map((h, i) => (
@@ -387,6 +388,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
             <div style={{ marginTop: 10, fontSize: 10, color: "#94a3b8", textAlign: "center" }}>
@@ -398,8 +400,8 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 
       {/* ====== TAB REKAP PER SANTRI ====== */}
       {tab === "persantri" && (
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, alignItems: "start" }}>
-          {/* Panel kiri: pilih santri */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16 }}>
+          {/* Panel pilih santri */}
           <div style={{ background: "white", borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
             <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, fontSize: 13, background: "#f8fafc" }}>👤 Pilih Santri</div>
             <div style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9" }}>
@@ -457,7 +459,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 
                   {/* Identitas santri */}
                   <div style={{ background: "white", borderRadius: 12, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
                       {[
                         { label: "Nama Santri", value: selectedSantri.nama_siswa },
                         { label: "Kelas", value: selectedSantri.kelas },
@@ -481,7 +483,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                     }, 0);
                     const totalSisa = totalTg - totalByr;
                     return (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 14 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 14 }}>
                         {[
                           { label: "Total Tagihan", value: formatRupiah(totalTg), color: "#1e40af", bg: "#eff6ff" },
                           { label: "Total Terbayar", value: formatRupiah(totalByr), color: "#065f46", bg: "#ecfdf5" },
@@ -521,7 +523,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                             </span>
                           </div>
                           {/* Ringkasan per tagihan */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: t.riwayat?.length > 0 ? "1px solid #f1f5f9" : "none" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 0, borderBottom: t.riwayat?.length > 0 ? "1px solid #f1f5f9" : "none" }}>
                             {[
                               { label: "Jumlah Tagihan", value: formatRupiah(t.jumlah), color: "#1e40af" },
                               { label: "Sudah Dibayar", value: formatRupiah(sudahBayar), color: "#059669" },
@@ -847,7 +849,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
           {/* INFO TAGIHAN */}
           <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14 }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{selectedTagihan.jenis}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
               <span>Total Tagihan: <b>{formatRupiah(selectedTagihan.jumlah)}</b></span>
               <span>Sudah Bayar: <b style={{ color: "#059669" }}>{formatRupiah(totalSudahBayar)}</b></span>
               <span>Sisa: <b style={{ color: "#dc2626" }}>{formatRupiah(sisaTagihan)}</b></span>
@@ -864,7 +866,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
                     /* FORM EDIT CICILAN */
                     <div style={{ background: "#f0fdf4", borderRadius: 10, padding: 12 }}>
                       <div style={{ fontWeight: 600, fontSize: 12, color: "#065f46", marginBottom: 8 }}>✏️ Edit Cicilan #{idx + 1}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                         <div>
                           <label style={lStyle}>Jumlah Bayar (Rp)</label>
                           <input style={iStyle} type="number" value={editForm.jumlah_bayar} onChange={e => setEditForm({ ...editForm, jumlah_bayar: e.target.value })} />
@@ -909,7 +911,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
           {!editCicilan && (
             <>
               <label style={lStyle}>3. Input Pembayaran Sekarang</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 8 }}>
                 <div>
                   <label style={lStyle}>Jumlah Bayar (Rp)</label>
                   <input
@@ -1066,7 +1068,7 @@ function DataSantri({ santri, headers, onRefresh }) {
           <div key={s.id} style={{ padding: "14px 20px", borderBottom: "1px solid #f8fafc" }}>
             {editSantri === s.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
                   <div><label style={lStyle}>Nama Wali</label><input style={iStyle} value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
                   <div><label style={lStyle}>Nama Santri</label><input style={iStyle} value={form.nama_siswa} onChange={e => setForm({ ...form, nama_siswa: e.target.value })} /></div>
                   <div><label style={lStyle}>Kelas</label><input style={iStyle} value={form.kelas} onChange={e => setForm({ ...form, kelas: e.target.value })} /></div>
@@ -1663,8 +1665,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
               {showForm && (
                 <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div><label style={lStyle}>Jenis Tagihan</label><input style={iStyle} placeholder="contoh: Syahriyah Juli" value={form.jenis} onChange={e => setForm({ ...form, jenis: e.target.value })} /></div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                     <div><label style={lStyle}>Jumlah (Rp)</label><input style={iStyle} type="number" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: e.target.value })} /></div>
                     <div>
                       <label style={lStyle}>Semester</label>
@@ -1958,7 +1959,7 @@ function TambahSantri({ headers, onRefresh }) {
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>➕ Tambah Santri & Akun Baru</div>
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
       <div style={{ background: "white", borderRadius: 14, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
           <div><label style={lStyle}>Nama Wali / Orang Tua</label><input style={iStyle} placeholder="contoh: Ahmad Fauzi" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
           <div><label style={lStyle}>Nama Santri</label><input style={iStyle} placeholder="contoh: Rizky Fauzi" value={form.nama_siswa} onChange={e => setForm({ ...form, nama_siswa: e.target.value })} /></div>
           <div>
@@ -2080,7 +2081,7 @@ function Pengingat({ santri, headers }) {
           </label>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 14 }}>
           <div>
             <label style={lStyle}>Tanggal Pengiriman (tiap bulan)</label>
             <select style={iStyle} value={jadwal.tanggal} onChange={e => setJadwal({ ...jadwal, tanggal: Number(e.target.value) })}>
@@ -2354,7 +2355,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
         {showTambah && (
           <div style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 10, padding: 14, marginBottom: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "#065f46" }}>➕ Tambah Semester Baru</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 12 }}>
               <div>
                 <label style={lStyle}>Nama Semester *</label>
                 <input
@@ -2391,7 +2392,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
                   // ── Form edit inline ──
                   <div style={{ padding: 14 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "#1e40af" }}>✏️ Edit Semester</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 10 }}>
                       <div>
                         <label style={lStyle}>Nama Semester *</label>
                         <input
@@ -2454,7 +2455,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
           <div>
             <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: 14, marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: "#1e40af", marginBottom: 12, fontWeight: 600 }}>⚙️ Pengaturan Duplikasi</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={lStyle}>Semester Asal (sumber)</label>
                   <select style={iStyle} value={dupForm.semesterAsal} onChange={e => setDupForm({ ...dupForm, semesterAsal: e.target.value })}>
@@ -2545,12 +2546,12 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
 // ============================================================
 // STYLES
 // ============================================================
-const iStyle = { width: "100%", border: "2px solid #e5e7eb", borderRadius: 8, padding: "10px 12px", fontSize: 14, outline: "none", boxSizing: "border-box" };
+const iStyle = { width: "100%", border: "2px solid #e5e7eb", borderRadius: 8, padding: "12px 12px", fontSize: 16, outline: "none", boxSizing: "border-box" };
 const lStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 };
-const btnGreen = { background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnBlue = { background: "#3b82f6", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnRed = { background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnGray = { background: "#6b7280", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const btnGreen = { background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44 };
+const btnBlue = { background: "#3b82f6", color: "white", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44 };
+const btnRed = { background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44 };
+const btnGray = { background: "#6b7280", color: "white", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44 };
 // ============================================================
 // RIWAYAT PEMBAYARAN
 // ============================================================
@@ -2586,15 +2587,8 @@ function RiwayatPembayaran({ headers }) {
         💰 Total Terbayar: {formatRupiah(totalBayar)} — {filtered.length} transaksi
       </div>
       {loading ? <p>Memuat data...</p> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "#f1f5f9" }}>
-                {["Tanggal","Nama Santri","Kelas","Jenis Tagihan","Dibayar","Total Tagihan","Keterangan"].map(h => (
-                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <tbody>
               {filtered.length === 0 && (
                 <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
@@ -2682,8 +2676,8 @@ function RiwayatNotif({ headers }) {
         </div>
       </div>
       {loading ? <p>Memuat data...</p> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
                 {["Waktu","Nama Santri","No WA","Jenis","Status","Pesan"].map(h => (
