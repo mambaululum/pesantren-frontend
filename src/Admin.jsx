@@ -1134,6 +1134,11 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [tagihan, setTagihan] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showCopy, setShowCopy] = useState(false);
+  const [copyReferensi, setCopyReferensi] = useState(null);
+  const [tagihanReferensi, setTagihanReferensi] = useState([]);
+  const [loadingCopy, setLoadingCopy] = useState(false);
+  const [searchCopySantri, setSearchCopySantri] = useState("");
   const [editTagihan, setEditTagihan] = useState(null);
   const [form, setForm] = useState({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: "", keterangan_semester: "", kirim_notif: false });
   const [msg, setMsg] = useState("");
@@ -1541,7 +1546,101 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
                 </div>
               </div>
 
-              <button style={{ ...btnGreen, marginBottom: 12 }} onClick={() => { setShowForm(!showForm); if (!showForm) setForm({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: semesterSetting.aktif || "", keterangan_semester: "", kirim_notif: false }); }}>{showForm ? "❌ Batal" : "➕ Tambah Tagihan Baru"}</button>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                <button style={{ ...btnGreen }} onClick={() => { setShowForm(!showForm); setShowCopy(false); if (!showForm) setForm({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: semesterSetting.aktif || "", keterangan_semester: "", kirim_notif: false }); }}>{showForm ? "❌ Batal" : "➕ Tambah Tagihan Baru"}</button>
+                <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => { setShowCopy(!showCopy); setShowForm(false); setCopyReferensi(null); setTagihanReferensi([]); setSearchCopySantri(""); }}>{showCopy ? "❌ Batal Copy" : "📋 Copy Tagihan dari Santri Lain"}</button>
+              </div>
+
+              {showCopy && (
+                <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "2px solid #7c3aed" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#7c3aed", marginBottom: 12 }}>📋 Copy Tagihan dari Santri Lain ke {selectedUser.nama_siswa}</div>
+                  
+                  {/* Pilih santri referensi */}
+                  <label style={lStyle}>Pilih Santri Referensi (yang tagihannya mau di-copy):</label>
+                  <input
+                    style={{ ...iStyle, marginBottom: 8, marginTop: 4 }}
+                    placeholder="🔍 Cari nama santri..."
+                    value={searchCopySantri}
+                    onChange={e => setSearchCopySantri(e.target.value)}
+                  />
+                  <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 10, marginBottom: 12 }}>
+                    {santri.filter(s => s.id !== selectedUser.id && s.nama_siswa.toLowerCase().includes(searchCopySantri.toLowerCase())).map(s => (
+                      <div key={s.id}
+                        onClick={async () => {
+                          setCopyReferensi(s);
+                          setSearchCopySantri("");
+                          try {
+                            const res = await axios.get(`${API}/tagihan/${s.id}`, { headers });
+                            setTagihanReferensi(res.data);
+                          } catch(e) { setTagihanReferensi([]); }
+                        }}
+                        style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #f8fafc", background: copyReferensi?.id === s.id ? "#f5f3ff" : "white", borderLeft: copyReferensi?.id === s.id ? "3px solid #7c3aed" : "3px solid transparent", display: "flex", justifyContent: "space-between" }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: copyReferensi?.id === s.id ? 700 : 400 }}>{s.nama_siswa}</span>
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>{s.kelas}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Preview tagihan referensi */}
+                  {copyReferensi && tagihanReferensi.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>📋 Tagihan {copyReferensi.nama_siswa} ({tagihanReferensi.length} tagihan):</div>
+                      <div style={{ background: "#f5f3ff", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {tagihanReferensi.map((t, i) => (
+                          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, background: "white", borderRadius: 8, padding: "8px 12px" }}>
+                            <span><b>{t.jenis}</b>{t.semester ? <span style={{ color: "#7c3aed", marginLeft: 6, fontSize: 11 }}>({t.semester})</span> : ""}</span>
+                            <span style={{ color: "#059669", fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                        Semua tagihan di atas akan di-copy ke <b>{selectedUser.nama_siswa}</b> dengan status <b>Belum Bayar</b>.
+                      </div>
+                    </div>
+                  )}
+
+                  {copyReferensi && tagihanReferensi.length === 0 && (
+                    <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, fontSize: 13, color: "#92400e", marginBottom: 12 }}>
+                      ⚠️ {copyReferensi.nama_siswa} tidak punya tagihan.
+                    </div>
+                  )}
+
+                  {copyReferensi && tagihanReferensi.length > 0 && (
+                    <button
+                      style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", opacity: loadingCopy ? 0.7 : 1 }}
+                      disabled={loadingCopy}
+                      onClick={async () => {
+                        setLoadingCopy(true);
+                        let berhasil = 0;
+                        for (const t of tagihanReferensi) {
+                          try {
+                            await axios.post(`${API}/tagihan`, {
+                              user_id: selectedUser.id,
+                              jenis: t.jenis,
+                              jumlah: Number(t.jumlah),
+                              semester: t.semester || null,
+                              status: "belum",
+                              tanggal_bayar: null,
+                              kirim_notif: false,
+                            }, { headers });
+                            berhasil++;
+                          } catch(e) {}
+                        }
+                        setMsg(`✅ ${berhasil} tagihan berhasil di-copy ke ${selectedUser.nama_siswa}!`);
+                        setLoadingCopy(false);
+                        setShowCopy(false);
+                        setCopyReferensi(null);
+                        setTagihanReferensi([]);
+                        loadTagihan(selectedUser.id);
+                        setTimeout(() => setMsg(""), 4000);
+                      }}
+                    >
+                      {loadingCopy ? "⏳ Menyalin..." : `📋 Copy ${tagihanReferensi.length} Tagihan ke ${selectedUser.nama_siswa}`}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {showForm && (
                 <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
