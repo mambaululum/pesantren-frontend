@@ -1139,6 +1139,7 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [tagihanReferensi, setTagihanReferensi] = useState([]);
   const [loadingCopy, setLoadingCopy] = useState(false);
   const [searchCopySantri, setSearchCopySantri] = useState("");
+const [selectedTagihanCopy, setSelectedTagihanCopy] = useState([]);
   const [editTagihan, setEditTagihan] = useState(null);
   const [form, setForm] = useState({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: "", keterangan_semester: "", kirim_notif: false });
   const [msg, setMsg] = useState("");
@@ -1588,14 +1589,24 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>📋 Tagihan {copyReferensi.nama_siswa} ({tagihanReferensi.length} tagihan):</div>
                       <div style={{ background: "#f5f3ff", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                         {tagihanReferensi.map((t, i) => (
-                          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, background: "white", borderRadius: 8, padding: "8px 12px" }}>
-                            <span><b>{t.jenis}</b>{t.semester ? <span style={{ color: "#7c3aed", marginLeft: 6, fontSize: 11 }}>({t.semester})</span> : ""}</span>
+                          <div key={t.id} onClick={() => setSelectedTagihanCopy(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                            style={{ display: "flex", justifyContent: "space-between", fontSize: 13, background: selectedTagihanCopy.includes(t.id) ? "#f5f3ff" : "white", borderRadius: 8, padding: "8px 12px", cursor: "pointer", border: `1px solid ${selectedTagihanCopy.includes(t.id) ? "#7c3aed" : "#e5e7eb"}` }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <input type="checkbox" checked={selectedTagihanCopy.includes(t.id)} readOnly style={{ width: 15, height: 15 }} />
+                              <b>{t.jenis}</b>{t.semester ? <span style={{ color: "#7c3aed", marginLeft: 6, fontSize: 11 }}>({t.semester})</span> : ""}
+                            </span>
                             <span style={{ color: "#059669", fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
                           </div>
                         ))}
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
-                        Semua tagihan di atas akan di-copy ke <b>{selectedUser.nama_siswa}</b> dengan status <b>Belum Bayar</b>.
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          {selectedTagihanCopy.length === 0 ? "⚠️ Centang tagihan yang mau di-copy" : `✅ ${selectedTagihanCopy.length} tagihan dipilih`}
+                        </div>
+                        <button style={{ fontSize: 12, background: "none", border: "none", color: "#7c3aed", cursor: "pointer", fontWeight: 600 }}
+                          onClick={() => setSelectedTagihanCopy(selectedTagihanCopy.length === tagihanReferensi.length ? [] : tagihanReferensi.map(t => t.id))}>
+                          {selectedTagihanCopy.length === tagihanReferensi.length ? "Batal Semua" : "✅ Pilih Semua"}
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1611,9 +1622,10 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
                       style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", opacity: loadingCopy ? 0.7 : 1 }}
                       disabled={loadingCopy}
                       onClick={async () => {
+                        if (selectedTagihanCopy.length === 0) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
                         setLoadingCopy(true);
                         let berhasil = 0;
-                        for (const t of tagihanReferensi) {
+                        for (const t of tagihanReferensi.filter(t => selectedTagihanCopy.includes(t.id))) {
                           try {
                             await axios.post(`${API}/tagihan`, {
                               user_id: selectedUser.id,
@@ -1632,11 +1644,12 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
                         setShowCopy(false);
                         setCopyReferensi(null);
                         setTagihanReferensi([]);
+                        setSelectedTagihanCopy([]);
                         loadTagihan(selectedUser.id);
                         setTimeout(() => setMsg(""), 4000);
                       }}
                     >
-                      {loadingCopy ? "⏳ Menyalin..." : `📋 Copy ${tagihanReferensi.length} Tagihan ke ${selectedUser.nama_siswa}`}
+                      {loadingCopy ? "⏳ Menyalin..." : `📋 Copy ${selectedTagihanCopy.length} Tagihan ke ${selectedUser.nama_siswa}`}
                     </button>
                   )}
                 </div>
