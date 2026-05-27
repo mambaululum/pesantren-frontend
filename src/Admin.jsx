@@ -1127,6 +1127,7 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [massalForm, setMassalForm] = useState({ jenis: "", jumlah: "", semester: "", status: "belum", kirim_notif: true });
   const [massalSantri, setMassalSantri] = useState([]);
   const [massalLoading, setMassalLoading] = useState(false);
+  const [loadingSemester, setLoadingSemester] = useState(false);
 
   // ── Kelola Tagihan state ──────────────────────────────────
   const [selectedUser, setSelectedUser] = useState(null);
@@ -1150,18 +1151,19 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [searchRekap, setSearchRekap] = useState("");
   const [filterRekap, setFilterRekap] = useState("semua"); // "semua"|"lunas"|"belum"
 
-  useEffect(() => {
-    const loadSemesters = async () => {
-      try {
-        const semRes = await axios.get(`${API}/semester`, { headers });
-        const semObjs = semRes.data;
-        const semNames = semObjs.map(s => s.semester);
-        setSemesters(semNames);
-        if (semNames.length > 0) setSemesterSetting({ aktif: semNames[0], daftar: semNames });
-      } catch (e) { console.error(e); }
-    };
-    loadSemesters();
-  }, []);
+  const refreshSemesters = async () => {
+    setLoadingSemester(true);
+    try {
+      const semRes = await axios.get(`${API}/semester`, { headers });
+      const semObjs = semRes.data;
+      const semNames = semObjs.map(s => s.semester);
+      setSemesters(semNames);
+      if (semNames.length > 0) setSemesterSetting({ aktif: semNames[0], daftar: semNames });
+    } catch (e) { console.error(e); }
+    setLoadingSemester(false);
+  };
+
+  useEffect(() => { refreshSemesters(); }, []);
 
   // Load rekap semua santri saat tab rekap dibuka
   useEffect(() => {
@@ -1372,7 +1374,14 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
             <div><label style={lStyle}>Jenis Tagihan</label><input style={iStyle} placeholder="contoh: Syahriyah Juli" value={massalForm.jenis} onChange={e => setMassalForm({ ...massalForm, jenis: e.target.value })} /></div>
             <div><label style={lStyle}>Jumlah (Rp)</label><input style={iStyle} type="number" placeholder="400000" value={massalForm.jumlah} onChange={e => setMassalForm({ ...massalForm, jumlah: e.target.value })} /></div>
-            <div><label style={lStyle}>Semester</label>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label style={lStyle}>Semester</label>
+                <button type="button" onClick={refreshSemesters} disabled={loadingSemester}
+                  style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 6, padding: "2px 8px", fontSize: 11, cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
+                  {loadingSemester ? "⏳" : "🔄"} Refresh
+                </button>
+              </div>
               <select style={iStyle} value={massalForm.semester} onChange={e => setMassalForm({ ...massalForm, semester: e.target.value })}>
                 <option value="">-- Tanpa Semester --</option>
                 {semesters.map((s, i) => <option key={i} value={s}>{s}</option>)}
