@@ -1140,6 +1140,8 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [loadingCopy, setLoadingCopy] = useState(false);
   const [searchCopySantri, setSearchCopySantri] = useState("");
 const [selectedTagihanCopy, setSelectedTagihanCopy] = useState([]);
+const [selectedTagihanHapus, setSelectedTagihanHapus] = useState([]);
+const [modeHapusMassal, setModeHapusMassal] = useState(false);
   const [editTagihan, setEditTagihan] = useState(null);
   const [form, setForm] = useState({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: "", keterangan_semester: "", kirim_notif: false });
   const [msg, setMsg] = useState("");
@@ -1550,6 +1552,10 @@ const [selectedTagihanCopy, setSelectedTagihanCopy] = useState([]);
               <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                 <button style={{ ...btnGreen }} onClick={() => { setShowForm(!showForm); setShowCopy(false); if (!showForm) setForm({ jenis: "", jumlah: "", tanggal_bayar: "", status: "belum", semester: semesterSetting.aktif || "", keterangan_semester: "", kirim_notif: false }); }}>{showForm ? "❌ Batal" : "➕ Tambah Tagihan Baru"}</button>
                 <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => { setShowCopy(!showCopy); setShowForm(false); setCopyReferensi(null); setTagihanReferensi([]); setSearchCopySantri(""); }}>{showCopy ? "❌ Batal Copy" : "📋 Copy Tagihan dari Santri Lain"}</button>
+                <button style={{ background: modeHapusMassal ? "#dc2626" : "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  onClick={() => { setModeHapusMassal(!modeHapusMassal); setSelectedTagihanHapus([]); setShowForm(false); setShowCopy(false); }}>
+                  {modeHapusMassal ? "❌ Batal Hapus" : "🗑️ Hapus Massal"}
+                </button>
               </div>
 
               {showCopy && (
@@ -1687,6 +1693,41 @@ const [selectedTagihanCopy, setSelectedTagihanCopy] = useState([]);
                 </div>
               )}
 
+              {/* PANEL HAPUS MASSAL */}
+              {modeHapusMassal && (
+                <div style={{ background: "#fef2f2", border: "2px solid #fecaca", borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>
+                      🗑️ Mode Hapus Massal — {selectedTagihanHapus.length} tagihan dipilih
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{ ...btnGray, fontSize: 12, padding: "6px 12px" }}
+                        onClick={() => setSelectedTagihanHapus(selectedTagihanHapus.length === tagihan.length ? [] : tagihan.map(t => t.id))}>
+                        {selectedTagihanHapus.length === tagihan.length ? "Batal Semua" : "✅ Pilih Semua"}
+                      </button>
+                      <button
+                        style={{ background: "#dc2626", color: "white", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: selectedTagihanHapus.length === 0 ? 0.5 : 1 }}
+                        disabled={selectedTagihanHapus.length === 0}
+                        onClick={async () => {
+                          if (!confirm(`Hapus ${selectedTagihanHapus.length} tagihan? Semua cicilan ikut terhapus!`)) return;
+                          let berhasil = 0;
+                          for (const id of selectedTagihanHapus) {
+                            try { await axios.delete(`${API}/tagihan/${id}`, { headers }); berhasil++; } catch(e) {}
+                          }
+                          setMsg(`✅ ${berhasil} tagihan berhasil dihapus!`);
+                          setSelectedTagihanHapus([]);
+                          setModeHapusMassal(false);
+                          loadTagihan(selectedUser.id);
+                          setRekapData({});
+                          setTimeout(() => setMsg(""), 4000);
+                        }}>
+                        🗑️ Hapus {selectedTagihanHapus.length} Tagihan
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* DAFTAR TAGIHAN per semester */}
               {loading ? <div style={{ padding: 30, textAlign: "center" }}>Memuat...</div> :
                 Object.entries(tagihanBySemester).map(([semKey, items]) => (
@@ -1697,7 +1738,17 @@ const [selectedTagihanCopy, setSelectedTagihanCopy] = useState([]);
                     </div>
                     <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                       {items.map(t => (
-                        <div key={t.id} style={{ padding: "12px 16px", borderBottom: "1px solid #f8fafc", background: t.status === "lunas" ? "white" : "#fffbeb" }}>
+                        <div key={t.id}
+                          onClick={() => modeHapusMassal && setSelectedTagihanHapus(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                          style={{ padding: "12px 16px", borderBottom: "1px solid #f8fafc", background: modeHapusMassal && selectedTagihanHapus.includes(t.id) ? "#fef2f2" : t.status === "lunas" ? "white" : "#fffbeb", cursor: modeHapusMassal ? "pointer" : "default" }}>
+                          {modeHapusMassal && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <input type="checkbox" checked={selectedTagihanHapus.includes(t.id)} readOnly style={{ width: 15, height: 15 }} />
+                              <span style={{ fontSize: 12, color: selectedTagihanHapus.includes(t.id) ? "#dc2626" : "#94a3b8", fontWeight: 600 }}>
+                                {selectedTagihanHapus.includes(t.id) ? "✓ Dipilih untuk dihapus" : "Klik untuk pilih"}
+                              </span>
+                            </div>
+                          )}
                           {editTagihan === t.id ? (
                             <div>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
