@@ -1124,7 +1124,7 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   // ── Sub-tab ──────────────────────────────────────────────
   const [subTab, setSubTab] = useState("kelola");
   const [showMassal, setShowMassal] = useState(false);
-  const [massalForm, setMassalForm] = useState({ jenis: "", jumlah: "", semester: "", status: "belum" });
+  const [massalForm, setMassalForm] = useState({ jenis: "", jumlah: "", semester: "", status: "belum", kirim_notif: true });
   const [massalSantri, setMassalSantri] = useState([]);
   const [massalLoading, setMassalLoading] = useState(false);
 
@@ -1312,7 +1312,7 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
           semester: massalForm.semester || null,
           status: massalForm.status,
           tanggal_bayar: null,
-          kirim_notif: massalForm.status === "belum"
+          kirim_notif: massalForm.status === "belum" && massalForm.kirim_notif
         }, { headers });
         berhasil++;
       } catch (e) { gagal++; }
@@ -1320,7 +1320,7 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
     setMsg(`✅ Tagihan berhasil ditambahkan ke ${berhasil} santri${gagal > 0 ? `, ${gagal} gagal` : ""}!`);
     setMassalLoading(false);
     setShowMassal(false);
-    setMassalForm({ jenis: "", jumlah: "", semester: "", status: "belum" });
+    setMassalForm({ jenis: "", jumlah: "", semester: "", status: "belum", kirim_notif: true });
     setMassalSantri([]);
     if (selectedUser) loadTagihan(selectedUser.id);
     onRefreshSantri();
@@ -1405,8 +1405,34 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{massalSantri.length} santri dipilih</div>
           </div>
 
+          {/* TOGGLE NOTIFIKASI WA */}
+          <div style={{ marginBottom: 14, padding: "12px 14px", background: massalForm.kirim_notif ? "#f0fdf4" : "#f8fafc", borderRadius: 10, border: `1px solid ${massalForm.kirim_notif ? "#a7f3d0" : "#e5e7eb"}` }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, color: massalForm.kirim_notif ? "#065f46" : "#64748b" }}>
+              <input
+                type="checkbox"
+                checked={massalForm.kirim_notif}
+                onChange={e => setMassalForm({ ...massalForm, kirim_notif: e.target.checked })}
+                style={{ width: 18, height: 18, cursor: "pointer" }}
+              />
+              📲 Kirim notifikasi WhatsApp ke wali santri
+            </label>
+            <div style={{ fontSize: 12, marginTop: 6, marginLeft: 28, color: massalForm.kirim_notif ? "#059669" : "#94a3b8" }}>
+              {massalForm.kirim_notif
+                ? `✅ Notifikasi akan dikirim ke ${massalSantri.filter(uid => santri.find(s => s.id === uid)?.no_hp).length} wali yang punya nomor WA dari ${massalSantri.length} santri dipilih`
+                : "❌ Notifikasi tidak akan dikirim"}
+            </div>
+            {massalForm.kirim_notif && massalSantri.filter(uid => !santri.find(s => s.id === uid)?.no_hp).length > 0 && (
+              <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 4, marginLeft: 28 }}>
+                ⚠️ {massalSantri.filter(uid => !santri.find(s => s.id === uid)?.no_hp).length} santri tidak punya nomor WA (tidak akan dapat notif):&nbsp;
+                {massalSantri.filter(uid => !santri.find(s => s.id === uid)?.no_hp).map(uid => santri.find(s => s.id === uid)?.nama_siswa).join(", ")}
+              </div>
+            )}
+          </div>
+
           <button style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 15 }} onClick={handleTambahMassal} disabled={massalLoading}>
-            {massalLoading ? "Menyimpan..." : `💾 Tambah Tagihan ke ${massalSantri.length} Santri`}
+            {massalLoading
+              ? `⏳ Menyimpan...`
+              : `💾 Tambah Tagihan ke ${massalSantri.length} Santri${massalForm.kirim_notif ? " + Kirim WA" : " (Tanpa WA)"}`}
           </button>
         </div>
       )}
