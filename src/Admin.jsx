@@ -649,6 +649,12 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setKeteranganLebih(defaultKet);
       setKirimWALebih(true);
       setShowKonfirmasiLebih(true);
+    } else if (jumlahInput < sisaTagihan) {
+      // Cicilan → tampilkan konfirmasi kirim WA
+      setPendingBayar({ jumlahInput, jumlahBayar: jumlahInput, kelebihan: 0, isCicilan: true });
+      setKeteranganLebih(form.keterangan || "");
+      setKirimWALebih(true);
+      setShowKonfirmasiLebih(true);
     } else {
       handleSimpanBayar(jumlahInput, jumlahInput, 0, form.keterangan, false);
     }
@@ -949,16 +955,19 @@ function InputCicilan({ santri: santriRaw, headers }) {
               {showKonfirmasiLebih && pendingBayar && (
                 <div style={{ background: "#f0fdf4", border: "2px solid #86efac", borderRadius: 12, padding: 16, marginTop: 12 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#065f46", marginBottom: 12 }}>
-                    ✏️ Konfirmasi & Edit Keterangan Kelebihan
+                    {pendingBayar?.isCicilan ? "💰 Konfirmasi Cicilan" : "✏️ Konfirmasi & Edit Keterangan Kelebihan"}
                   </div>
 
                   {/* Ringkasan */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-                    {[
+                  <div style={{ display: "grid", gridTemplateColumns: pendingBayar?.isCicilan ? "1fr 1fr" : "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+                    {(pendingBayar?.isCicilan ? [
+                      { label: "Jumlah Cicilan", value: formatRupiah(pendingBayar.jumlahInput), color: "#1e40af" },
+                      { label: "Sisa Tagihan", value: formatRupiah(sisaTagihan - pendingBayar.jumlahInput), color: "#b45309" },
+                    ] : [
                       { label: "Total Dibayar", value: formatRupiah(pendingBayar.jumlahInput), color: "#1e40af" },
                       { label: "Untuk Tagihan", value: formatRupiah(pendingBayar.jumlahBayar), color: "#065f46" },
                       { label: "Kelebihan", value: formatRupiah(pendingBayar.kelebihan), color: "#b45309" },
-                    ].map((c, i) => (
+                    ]).map((c, i) => (
                       <div key={i} style={{ background: "white", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>{c.label}</div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: c.color }}>{c.value}</div>
@@ -968,7 +977,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
                   {/* Edit keterangan */}
                   <div style={{ marginBottom: 12 }}>
-                    <label style={lStyle}>📝 Keterangan kelebihan (bisa diedit)</label>
+                    <label style={lStyle}>📝 {pendingBayar?.isCicilan ? "Keterangan cicilan (opsional)" : "Keterangan kelebihan (bisa diedit)"}</label>
                     <textarea
                       style={{ ...iStyle, minHeight: 72, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
                       value={keteranganLebih}
