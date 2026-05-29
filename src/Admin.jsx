@@ -2628,7 +2628,7 @@ function RiwayatNotif({ headers }) {
 
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/riwayat-notif`, { headers })
+    axios.get(`${API}/riwayat-wa`, { headers })
       .then(r => { setData(Array.isArray(r.data) ? r.data : []); setLoading(false); })
       .catch(() => setLoading(false));
   };
@@ -2638,7 +2638,7 @@ function RiwayatNotif({ headers }) {
   const filtered = data.filter(r =>
     (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
     (r.nama_wali || "").toLowerCase().includes(search.toLowerCase()) ||
-    (r.jenis_notif || "").toLowerCase().includes(search.toLowerCase())
+    (r.jenis || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const labelJenis = (j) => ({
@@ -2699,7 +2699,7 @@ function RiwayatNotif({ headers }) {
                     <div style={{ fontSize: 11, color: "#94a3b8" }}>{r.nama_wali}</div>
                   </td>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", fontSize: 12 }}>{r.no_hp}</td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{labelJenis(r.jenis_notif)}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{labelJenis(r.jenis)}</td>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", textAlign: "center" }}>
                     <span style={{
                       background: r.status === "terkirim" ? "#dcfce7" : "#fee2e2",
