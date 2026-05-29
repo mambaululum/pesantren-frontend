@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 
 const API = "https://pesantren-backend.vercel.app/api/admin";
@@ -77,6 +77,20 @@ function AdminLogin({ onLogin }) {
 // ============================================================
 function AdminDashboard({ admin, onLogout }) {
   const [menu, setMenu] = useState("rekap");
+  const menuRef = useRef(null);
+  const touchStartX = useRef(null);
+  const allMenuKeys = ["rekap","santri","tagihan","cicilan","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) < 50) return;
+    const idx = allMenuKeys.indexOf(menu);
+    if (diff > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
+    else if (diff < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
+    touchStartX.current = null;
+  };
   const [santri, setSantri] = useState([]);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("adminToken");
@@ -114,6 +128,7 @@ function AdminDashboard({ admin, onLogout }) {
     { key: "pengingat", label: "🔔 Pengingat" },
     { key: "riwayat_bayar", label: "📜 Riwayat Bayar" },
     { key: "riwayat_notif", label: "📨 Riwayat Notif WA" },
+    { key: "pengumuman", label: "📣 Pengumuman" },
   ];
 
   return (
@@ -132,7 +147,7 @@ function AdminDashboard({ admin, onLogout }) {
         </div>
       </header>
 
-      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }} ref={menuRef}>
         {menus.map(m => (
           <button key={m.key} onClick={() => setMenu(m.key)} style={{ padding: "14px 12px", border: "none", background: "none", borderBottom: menu === m.key ? "3px solid #059669" : "3px solid transparent", color: menu === m.key ? "#059669" : "#64748b", fontWeight: menu === m.key ? 700 : 500, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", minHeight: 48, flexShrink: 0 }}>
             {m.label}
@@ -160,6 +175,7 @@ function AdminDashboard({ admin, onLogout }) {
         {menu === "semester" && <ManajemenSemester santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
         {menu === "riwayat_bayar" && <RiwayatPembayaran headers={headers} />}
         {menu === "riwayat_notif" && <RiwayatNotif headers={headers} />}
+        {menu === "pengumuman" && <Pengumuman santri={santri} headers={headers} />}
       </div>
     </div>
   );
@@ -2094,6 +2110,16 @@ function Pengingat({ santri, headers }) {
       {/* JADWAL OTOMATIS */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ fontWeight: 700, marginBottom: 12 }}>⏰ Jadwal Pengingat Otomatis</div>
+        <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14, fontSize: 13, color: "#92400e", border: "1px solid #fde68a" }}>
+          ⚠️ <b>Penting:</b> Karena aplikasi di-host di Vercel (serverless), jadwal otomatis tidak bisa berjalan sendiri.<br/>
+          Gunakan <b>cron-job.org</b> (gratis) untuk memanggil URL ini setiap bulan:<br/>
+          <code style={{ background: "#fef3c7", padding: "4px 8px", borderRadius: 6, fontSize: 12, display: "block", marginTop: 6, wordBreak: "break-all" }}>
+            GET https://pesantren-backend.vercel.app/api/admin/cron/pengingat
+          </code>
+          <button onClick={() => window.open("https://cron-job.org", "_blank")} style={{ marginTop: 8, padding: "6px 14px", background: "#f59e0b", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            🔗 Buka cron-job.org
+          </button>
+        </div>
         {jadwalMsg && <div style={{ background: jadwalMsg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${jadwalMsg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 13, color: jadwalMsg.includes("✅") ? "#065f46" : "#dc2626" }}>{jadwalMsg}</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, padding: 12, background: jadwal.aktif ? "#f0fdf4" : "#f8fafc", borderRadius: 10, border: `1px solid ${jadwal.aktif ? "#a7f3d0" : "#e5e7eb"}` }}>
@@ -2197,7 +2223,9 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const [loadingDup, setLoadingDup] = useState(false);
   const [dupProgress, setDupProgress] = useState({ done: 0, total: 0 });
 
-  const loadSemesters = async () => {
+  const loadSemesters = async (force = false) => {
+    // Gunakan cache jika data sudah ada dan tidak dipaksa refresh
+    if (!force && semesters.length > 0) return;
     setLoading(true);
     try {
       const res = await axios.get(`${API}/semester`, { headers });
@@ -2685,6 +2713,15 @@ function RiwayatNotif({ headers }) {
         <button onClick={load} style={{ padding: "8px 16px", borderRadius: 8, background: "#0ea5e9", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
           🔄 Refresh
         </button>
+        <button onClick={async () => {
+          if (!confirm("Hapus semua riwayat notifikasi WA? Tindakan ini tidak bisa dibatalkan!")) return;
+          try {
+            await axios.delete(`${API}/riwayat-wa`, { headers });
+            load();
+          } catch(e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
+        }} style={{ padding: "8px 16px", borderRadius: 8, background: "#ef4444", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+          🗑️ Hapus Semua
+        </button>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
         <div style={{ background: "#dcfce7", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>
@@ -2748,6 +2785,177 @@ function RiwayatNotif({ headers }) {
     </div>
   );
 }
+// ============================================================
+// KOMPONEN PENGUMUMAN & BROADCAST
+// ============================================================
+function Pengumuman({ santri, headers }) {
+  const [form, setForm] = useState({
+    judul: "",
+    pesan: "",
+    target: "semua", // "semua" | "pilihan"
+  });
+  const [selectedSantri, setSelectedSantri] = useState([]);
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [riwayat, setRiwayat] = useState([]);
+
+  const loadRiwayat = async () => {
+    try {
+      const res = await axios.get(`${API}/pengumuman`, { headers });
+      setRiwayat(res.data || []);
+    } catch(e) { console.error(e); }
+  };
+
+  useEffect(() => { loadRiwayat(); }, []);
+
+  const toggleSantri = (id) => setSelectedSantri(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const handleKirim = async () => {
+    if (!form.pesan) { setMsg("❌ Isi pesan wajib diisi!"); return; }
+    if (form.target === "pilihan" && selectedSantri.length === 0) { setMsg("❌ Pilih minimal 1 santri!"); return; }
+    setLoading(true); setMsg("");
+
+    try {
+      // Jika ada file PDF, convert ke base64
+      let fileBase64 = null;
+      let fileName = null;
+      if (file) {
+        fileBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.readAsDataURL(file);
+        });
+        fileName = file.name;
+      }
+
+      const targets = form.target === "semua"
+        ? santri.filter(s => s.no_hp).map(s => s.id)
+        : selectedSantri;
+
+      const res = await axios.post(`${API}/pengumuman/kirim`, {
+        judul: form.judul,
+        pesan: form.pesan,
+        target_ids: targets,
+        file_base64: fileBase64,
+        file_name: fileName,
+      }, { headers });
+
+      setMsg("✅ " + res.data.message);
+      setForm({ judul: "", pesan: "", target: "semua" });
+      setFile(null);
+      setSelectedSantri([]);
+      loadRiwayat();
+    } catch(e) {
+      setMsg("❌ " + (e.response?.data?.message || "Gagal mengirim"));
+    }
+    setLoading(false);
+    setTimeout(() => setMsg(""), 5000);
+  };
+
+  const santriDenganWA = santri.filter(s => s.no_hp);
+
+  return (
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📣 Pengumuman & Broadcast WA</div>
+      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+
+      {/* FORM PENGUMUMAN */}
+      <div style={{ background: "white", borderRadius: 14, padding: 20, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontWeight: 700, marginBottom: 14 }}>✍️ Buat Pengumuman Baru</div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={lStyle}>Judul (opsional)</label>
+          <input style={iStyle} placeholder="contoh: Pengumuman Libur Pondok" value={form.judul} onChange={e => setForm({...form, judul: e.target.value})} />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={lStyle}>Isi Pesan *</label>
+          <textarea
+            style={{ ...iStyle, minHeight: 120, resize: "vertical" }}
+            placeholder="Tulis pesan pengumuman di sini..."
+            value={form.pesan}
+            onChange={e => setForm({...form, pesan: e.target.value})}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={lStyle}>Lampiran PDF (opsional)</label>
+          <input
+            type="file"
+            accept=".pdf"
+            style={{ display: "block", marginTop: 6, fontSize: 13 }}
+            onChange={e => setFile(e.target.files[0] || null)}
+          />
+          {file && <div style={{ marginTop: 6, fontSize: 12, color: "#059669" }}>📄 {file.name} ({(file.size/1024).toFixed(1)} KB)</div>}
+          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>⚠️ PDF akan dikirim sebagai dokumen via WhatsApp</div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={lStyle}>Kirim ke:</label>
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 8, border: `2px solid ${form.target === "semua" ? "#059669" : "#e5e7eb"}`, background: form.target === "semua" ? "#f0fdf4" : "white" }}>
+              <input type="radio" value="semua" checked={form.target === "semua"} onChange={() => setForm({...form, target: "semua"})} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Semua Wali ({santriDenganWA.length} orang)</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 8, border: `2px solid ${form.target === "pilihan" ? "#059669" : "#e5e7eb"}`, background: form.target === "pilihan" ? "#f0fdf4" : "white" }}>
+              <input type="radio" value="pilihan" checked={form.target === "pilihan"} onChange={() => setForm({...form, target: "pilihan"})} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Pilih Santri</span>
+            </label>
+          </div>
+        </div>
+
+        {form.target === "pilihan" && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <label style={lStyle}>Pilih Penerima:</label>
+              <button style={btnBlue} onClick={() => setSelectedSantri(selectedSantri.length === santriDenganWA.length ? [] : santriDenganWA.map(s => s.id))}>
+                {selectedSantri.length === santriDenganWA.length ? "Batal Semua" : "✅ Pilih Semua"}
+              </button>
+            </div>
+            <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 10, padding: 8 }}>
+              {santriDenganWA.map(s => (
+                <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", cursor: "pointer", borderRadius: 6, background: selectedSantri.includes(s.id) ? "#f0fdf4" : "white", marginBottom: 2 }}>
+                  <input type="checkbox" checked={selectedSantri.includes(s.id)} onChange={() => toggleSantri(s.id)} />
+                  <span style={{ fontSize: 14 }}>{s.nama_siswa} <span style={{ color: "#94a3b8" }}>({s.no_hp})</span></span>
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{selectedSantri.length} penerima dipilih</div>
+          </div>
+        )}
+
+        <button
+          style={{ ...btnGreen, width: "100%", padding: 13, fontSize: 15, opacity: loading ? 0.7 : 1 }}
+          onClick={handleKirim}
+          disabled={loading}
+        >
+          {loading ? "⏳ Mengirim..." : `📲 Kirim Pengumuman ke ${form.target === "semua" ? santriDenganWA.length : selectedSantri.length} Wali`}
+        </button>
+      </div>
+
+      {/* RIWAYAT PENGUMUMAN */}
+      <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>📋 Riwayat Pengumuman</div>
+        {riwayat.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#94a3b8", padding: 20, fontSize: 14 }}>Belum ada pengumuman yang dikirim</div>
+        ) : riwayat.map((r, i) => (
+          <div key={i} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.judul || "Pengumuman"}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{new Date(r.created_at).toLocaleString("id-ID")} · {r.terkirim} penerima</div>
+                <div style={{ fontSize: 13, color: "#374151", marginTop: 4, maxHeight: 60, overflow: "hidden" }}>{r.pesan}</div>
+              </div>
+              <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>✅ Terkirim</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [admin, setAdmin] = useState(() => {
     const token = localStorage.getItem("adminToken");
