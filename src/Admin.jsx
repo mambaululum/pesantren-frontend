@@ -2107,11 +2107,11 @@ function Pengingat({ santri, headers }) {
           <div>
             <label style={lStyle}>Tanggal Pengiriman (tiap bulan)</label>
             <select style={iStyle} value={jadwal.tanggal} onChange={e => setJadwal({ ...jadwal, tanggal: Number(e.target.value) })}>
-              {Array.from({ length: 29 }, (_, i) => i + 1).map(t => (
+              {Array.from({ length: 30 }, (_, i) => i + 1).map(t => (
                 <option key={t} value={t}>Tanggal {t}</option>
               ))}
             </select>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>Maks tanggal 29 (aman untuk semua bulan)</div>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>Maks tanggal 30 (aman untuk semua bulan)</div>
           </div>
           <div>
             <label style={lStyle}>Jam Pengiriman</label>
