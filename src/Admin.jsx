@@ -640,18 +640,19 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const handleBayar = () => {
     if (!selectedTagihan || !form.jumlah_bayar) { setMsg("❌ Pilih tagihan dan isi jumlah bayar!"); return; }
     const jumlahInput = Number(form.jumlah_bayar);
-    const kelebihan = jumlahInput - sisaTagihan;
+    const uangJajan = Number(form.uang_jajan || 0);
+    const kelebihan = jumlahInput - sisaTagihan + uangJajan;
 
     if (kelebihan > 0) {
       // Ada kelebihan → tampilkan panel konfirmasi untuk edit keterangan
       const defaultKet = `Bayar ${formatRupiah(jumlahInput)} | Tagihan lunas. Kelebihan ${formatRupiah(kelebihan)} untuk uang jajan${form.keterangan ? ` (${form.keterangan})` : ""}`;
-      setPendingBayar({ jumlahInput, jumlahBayar: sisaTagihan, kelebihan });
+      setPendingBayar({ jumlahInput: jumlahInput + uangJajan, jumlahBayar: sisaTagihan, kelebihan: kelebihan, uangJajan });
       setKeteranganLebih(defaultKet);
       setKirimWALebih(true);
       setShowKonfirmasiLebih(true);
     } else if (jumlahInput < sisaTagihan) {
       // Cicilan → tampilkan konfirmasi kirim WA
-      setPendingBayar({ jumlahInput, jumlahBayar: jumlahInput, kelebihan: 0, isCicilan: true });
+      setPendingBayar({ jumlahInput, jumlahBayar: jumlahInput, kelebihan: 0, isCicilan: true, uangJajan });
       setKeteranganLebih(form.keterangan || "");
       setKirimWALebih(true);
       setShowKonfirmasiLebih(true);
@@ -919,13 +920,24 @@ function InputCicilan({ santri: santriRaw, headers }) {
               <label style={lStyle}>3. Input Pembayaran Sekarang</label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 8 }}>
                 <div>
-                  <label style={lStyle}>Jumlah Bayar (Rp)</label>
+                  <label style={lStyle}>Jumlah Cicilan (Rp)</label>
                   <input
                     style={{ ...iStyle, borderColor: Number(form.jumlah_bayar) > sisaTagihan ? "#f59e0b" : undefined }}
                     type="number"
                     placeholder={`Sisa: ${sisaTagihan.toLocaleString("id-ID")}`}
                     value={form.jumlah_bayar}
                     onChange={e => { setForm({ ...form, jumlah_bayar: e.target.value }); setShowKonfirmasiLebih(false); }}
+                    disabled={showKonfirmasiLebih}
+                  />
+                </div>
+                <div>
+                  <label style={lStyle}>Titipan Uang Jajan (Rp)</label>
+                  <input
+                    style={iStyle}
+                    type="number"
+                    placeholder="0 jika tidak ada"
+                    value={form.uang_jajan || ""}
+                    onChange={e => { setForm({ ...form, uang_jajan: e.target.value }); setShowKonfirmasiLebih(false); }}
                     disabled={showKonfirmasiLebih}
                   />
                 </div>
@@ -962,6 +974,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   <div style={{ display: "grid", gridTemplateColumns: pendingBayar?.isCicilan ? "1fr 1fr" : "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                     {(pendingBayar?.isCicilan ? [
                       { label: "Jumlah Cicilan", value: formatRupiah(pendingBayar.jumlahInput), color: "#1e40af" },
+                      { label: "Uang sisa bayar", value: formatRupiah(pendingBayar.uangJajan || 0), color: "#7c3aed" },
                       { label: "Sisa Tagihan", value: formatRupiah(sisaTagihan - pendingBayar.jumlahInput), color: "#b45309" },
                     ] : [
                       { label: "Total Dibayar", value: formatRupiah(pendingBayar.jumlahInput), color: "#1e40af" },
