@@ -658,8 +658,8 @@ const styles = {
     fontFamily: "system-ui, sans-serif"
   },
   loginCard: {
-    background: "white", borderRadius: 20, padding: 40,
-    width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+    background: "white", borderRadius: 20, padding: 32,
+    width: "90%", maxWidth: 360, boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
   },
   loginLogo: {
     display: "flex", alignItems: "center", gap: 14,
