@@ -90,9 +90,9 @@ const handleTouchEnd = (e) => {
   const diffX = touchStartX.current - e.changedTouches[0].clientX;
   const diffY = touchStartX.startY - e.changedTouches[0].clientY;
   // Abaikan kalau gerakan vertikal lebih besar dari horizontal
-  if (Math.abs(diffY) > Math.abs(diffX)) return;
-  // Minimal swipe 80px
-  if (Math.abs(diffX) < 80) return;
+  if (Math.abs(diffY) > Math.abs(diffX) * 0.5) return;
+  // Minimal swipe 120px — lebih besar agar tidak mudah terpicu
+  if (Math.abs(diffX) < 120) return;
   const idx = allMenuKeys.indexOf(menu);
   if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
   else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
