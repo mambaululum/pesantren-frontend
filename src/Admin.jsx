@@ -2234,11 +2234,14 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const [dupProgress, setDupProgress] = useState({ done: 0, total: 0 });
 
   const loadSemesters = async (force = false) => {
-    // Gunakan cache jika data sudah ada dan tidak dipaksa refresh
-    if (!force && semesters.length > 0) return;
+    if (ManajemenSemester._cache && !force) {
+      setSemesters(ManajemenSemester._cache);
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.get(`${API}/semester`, { headers });
+      ManajemenSemester._cache = res.data;
       setSemesters(res.data);
     } catch (e) { console.error(e); }
     setLoading(false);
