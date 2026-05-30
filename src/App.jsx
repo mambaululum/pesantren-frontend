@@ -626,7 +626,7 @@ export default function App() {
     if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
-    setTimeout(() => setAppLoading(false), 3000);
+    setTimeout(() => setAppLoading(false), 5000);
   }, []);
 
   if (appLoading) return (
@@ -642,9 +642,9 @@ export default function App() {
       <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
       <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
       <div style={{
-        width: 32, height: 32, borderRadius: "50%",
-        border: "3px solid rgba(255,255,255,0.25)",
-        borderTop: "3px solid white",
+        width: 20, height: 20, borderRadius: "50%",
+        border: "2px solid rgba(255,255,255,0.25)",
+        borderTop: "2px solid white",
         animation: "spin 0.8s linear infinite"
       }} />
       <style dangerouslySetInnerHTML={{__html: `
