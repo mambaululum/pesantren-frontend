@@ -2697,10 +2697,20 @@ function RiwayatNotif({ headers }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const load = () => {
+  const load = (force = false) => {
+    if (RiwayatNotif._cache && !force) {
+      setData(RiwayatNotif._cache);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     axios.get(`${API}/riwayat-wa`, { headers })
-      .then(r => { setData(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .then(r => {
+        const result = Array.isArray(r.data) ? r.data : [];
+        RiwayatNotif._cache = result;
+        setData(result);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   };
 
