@@ -632,15 +632,18 @@ export default function App() {
     }}>
       <img src="/Mu.png" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover" }} alt="logo" />
       <div style={{ color: "white", fontWeight: 700, fontSize: 18 }}>PP. Muhammadiyah Mambaul Ulum</div>
-      <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Sistem Informasi Keuangan Santri</div>
+      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
+<div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
       {/* Spinner */}
       <div style={{
-        width: 40, height: 40, borderRadius: "50%",
-        border: "4px solid rgba(255,255,255,0.2)",
+        width: 44, height: 44, borderRadius: "50%",
+        border: "4px solid rgba(255,255,255,0.25)",
         borderTop: "4px solid white",
         animation: "spin 0.8s linear infinite"
       }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}} />
     </div>
   );
 
