@@ -642,7 +642,7 @@ export default function App() {
       <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
       <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
       <div style={{
-        width: 20, height: 20, borderRadius: "50%",
+        width: 14, height: 14, borderRadius: "50%",
         border: "2px solid rgba(255,255,255,0.25)",
         borderTop: "2px solid white",
         animation: "spin 0.8s linear infinite"
