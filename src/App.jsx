@@ -143,7 +143,20 @@ function LoginPage({ onLogin }) {
         </div>
         {error && <div style={styles.errorBox}>{error}</div>}
         <button style={styles.loginBtn} onClick={handleLogin} disabled={loading}>
-  {loading ? "Memuat..." : "Masuk"}
+  {loading ? (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+      <div style={{
+        width: 14, height: 14, borderRadius: "50%",
+        border: "2px solid rgba(255,255,255,0.25)",
+        borderTop: "2px solid white",
+        animation: "spin 0.8s linear infinite"
+      }} />
+      Memuat...
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}} />
+    </div>
+  ) : "Masuk"}
 </button>
 <InstallButton />
 
