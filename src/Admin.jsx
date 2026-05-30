@@ -81,16 +81,23 @@ function AdminDashboard({ admin, onLogout }) {
   const touchStartX = useRef(null);
   const allMenuKeys = ["rekap","santri","tagihan","cicilan","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
 
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e) => {
-    if (touchStartX.current === null) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) < 50) return;
-    const idx = allMenuKeys.indexOf(menu);
-    if (diff > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
-    else if (diff < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
-    touchStartX.current = null;
-  };
+  const handleTouchStart = (e) => {
+  touchStartX.current = e.touches[0].clientX;
+  touchStartX.startY = e.touches[0].clientY;
+};
+const handleTouchEnd = (e) => {
+  if (touchStartX.current === null) return;
+  const diffX = touchStartX.current - e.changedTouches[0].clientX;
+  const diffY = touchStartX.startY - e.changedTouches[0].clientY;
+  // Abaikan kalau gerakan vertikal lebih besar dari horizontal
+  if (Math.abs(diffY) > Math.abs(diffX)) return;
+  // Minimal swipe 80px
+  if (Math.abs(diffX) < 80) return;
+  const idx = allMenuKeys.indexOf(menu);
+  if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
+  else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
+  touchStartX.current = null;
+};
   const [santri, setSantri] = useState([]);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("adminToken");
