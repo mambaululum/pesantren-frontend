@@ -626,7 +626,7 @@ export default function App() {
     if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
-    setTimeout(() => setAppLoading(false), 1500);
+    setTimeout(() => setAppLoading(false), 3000);
   }, []);
 
   if (appLoading) return (
@@ -637,14 +637,14 @@ export default function App() {
       alignItems: "center", justifyContent: "center",
       fontFamily: "system-ui, sans-serif", gap: 20
     }}>
-      <img src="/Mu.png" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover" }} alt="logo" />
+      <img src="/Mu.png" style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover" }} alt="logo" />
       <div style={{ color: "white", fontWeight: 700, fontSize: 18 }}>PP. Muhammadiyah Mambaul Ulum</div>
       <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
       <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
       <div style={{
-        width: 44, height: 44, borderRadius: "50%",
-        border: "4px solid rgba(255,255,255,0.25)",
-        borderTop: "4px solid white",
+        width: 32, height: 32, borderRadius: "50%",
+        border: "3px solid rgba(255,255,255,0.25)",
+        borderTop: "3px solid white",
         animation: "spin 0.8s linear infinite"
       }} />
       <style dangerouslySetInnerHTML={{__html: `
