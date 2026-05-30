@@ -160,18 +160,18 @@ const handleTouchEnd = (e) => {
         </div>
       </header>
 
-      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }} ref={menuRef}>
+     <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }} ref={menuRef}
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+>
         {menus.map(m => (
           <button key={m.key} onClick={() => setMenu(m.key)} style={{ padding: "14px 12px", border: "none", background: "none", borderBottom: menu === m.key ? "3px solid #059669" : "3px solid transparent", color: menu === m.key ? "#059669" : "#64748b", fontWeight: menu === m.key ? 700 : 500, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", minHeight: 48, flexShrink: 0 }}>
             {m.label}
           </button>
         ))}
       </div>
-
       <div 
   style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}
-  onTouchStart={handleTouchStart}
-  onTouchEnd={handleTouchEnd}
 >
         {menu === "rekap" && (
           <RekapKeuangan
