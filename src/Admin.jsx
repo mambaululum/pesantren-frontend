@@ -170,7 +170,19 @@ const handleTouchEnd = (e) => {
           </button>
         ))}
       </div>
-      <div 
+      {/* Area swipe khusus */}
+<div
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+  style={{ height: 6, background: "transparent" }}
+/>
+{/* Area swipe khusus */}
+<div
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+  style={{ height: 6, background: "transparent" }}
+/>
+<div 
   style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}
 >
         {menu === "rekap" && (
