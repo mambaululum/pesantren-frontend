@@ -655,7 +655,9 @@ const styles = {
     minHeight: "100vh",
     background: "linear-gradient(135deg, #064e3b, #065f46, #047857)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontFamily: "system-ui, sans-serif"
+    fontFamily: "system-ui, sans-serif",
+    padding: "0 16px",
+    boxSizing: "border-box"
   },
   loginCard: {
     background: "white", borderRadius: 20, padding: 32,
