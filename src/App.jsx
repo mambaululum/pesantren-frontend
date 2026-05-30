@@ -611,14 +611,21 @@ function Dashboard({ user, onLogout }) {
 export default function App() {
   const isAdmin = window.location.pathname === "/admin";
   const [appLoading, setAppLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+    if (token && savedUser) {
+      try { return JSON.parse(savedUser); }
+      catch { return null; }
+    }
+    return null;
+  });
 
   useEffect(() => {
     const link = document.querySelector('link[rel="manifest"]');
     if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
-
-    // Simulasi loading awal
     setTimeout(() => setAppLoading(false), 1500);
   }, []);
 
@@ -633,8 +640,7 @@ export default function App() {
       <img src="/Mu.png" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover" }} alt="logo" />
       <div style={{ color: "white", fontWeight: 700, fontSize: 18 }}>PP. Muhammadiyah Mambaul Ulum</div>
       <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
-<div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
-      {/* Spinner */}
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
       <div style={{
         width: 44, height: 44, borderRadius: "50%",
         border: "4px solid rgba(255,255,255,0.25)",
@@ -648,17 +654,6 @@ export default function App() {
   );
 
   if (isAdmin) return <Admin />;
-
-  // Baca user dari localStorage saat pertama load
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    if (token && savedUser) {
-      try { return JSON.parse(savedUser); }
-      catch { return null; }
-    }
-    return null;
-  });
 
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
@@ -675,7 +670,6 @@ export default function App() {
     ? <Dashboard user={user} onLogout={handleLogout} />
     : <LoginPage onLogin={handleLogin} />;
 }
-
 // ============================================================
 // STYLES
 // ============================================================
