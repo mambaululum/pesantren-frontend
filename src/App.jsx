@@ -626,7 +626,7 @@ export default function App() {
     if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
-    setTimeout(() => setAppLoading(false), 5000);
+    setTimeout(() => setAppLoading(false), 4500);
   }, []);
 
   if (appLoading) return (
