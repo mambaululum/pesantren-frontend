@@ -96,10 +96,16 @@ function AdminDashboard({ admin, onLogout }) {
   const token = localStorage.getItem("adminToken");
   const headers = { Authorization: `Bearer ${token}` };
 
-  const loadSantri = async () => {
+  const loadSantri = async (force = false) => {
+    if (AdminDashboard._cache && !force) {
+      setSantri(AdminDashboard._cache);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.get(`${API}/santri`, { headers });
+      AdminDashboard._cache = res.data;
       setSantri(res.data);
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -2615,8 +2621,19 @@ function RiwayatPembayaran({ headers }) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    // Pakai cache kalau data sudah ada
+    if (RiwayatPembayaran._cache) {
+      setData(RiwayatPembayaran._cache);
+      setLoading(false);
+      return;
+    }
     axios.get(`${API}/riwayat-pembayaran`, { headers })
-      .then(r => { setData(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .then(r => {
+        const result = Array.isArray(r.data) ? r.data : [];
+        RiwayatPembayaran._cache = result;
+        setData(result);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
