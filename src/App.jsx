@@ -610,13 +610,39 @@ function Dashboard({ user, onLogout }) {
 // ============================================================
 export default function App() {
   const isAdmin = window.location.pathname === "/admin";
+  const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
     const link = document.querySelector('link[rel="manifest"]');
     if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
+
+    // Simulasi loading awal
+    setTimeout(() => setAppLoading(false), 1500);
   }, []);
+
+  if (appLoading) return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #064e3b, #065f46, #047857)",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "system-ui, sans-serif", gap: 20
+    }}>
+      <img src="/Mu.png" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover" }} alt="logo" />
+      <div style={{ color: "white", fontWeight: 700, fontSize: 18 }}>PP. Muhammadiyah Mambaul Ulum</div>
+      <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Sistem Informasi Keuangan Santri</div>
+      {/* Spinner */}
+      <div style={{
+        width: 40, height: 40, borderRadius: "50%",
+        border: "4px solid rgba(255,255,255,0.2)",
+        borderTop: "4px solid white",
+        animation: "spin 0.8s linear infinite"
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
   if (isAdmin) return <Admin />;
 
