@@ -155,7 +155,11 @@ function AdminDashboard({ admin, onLogout }) {
         ))}
       </div>
 
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}>
+      <div 
+  style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+>
         {menu === "rekap" && (
           <RekapKeuangan
             santri={santri}
