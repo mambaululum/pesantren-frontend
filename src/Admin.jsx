@@ -2173,37 +2173,6 @@ function Pengingat({ santri, headers }) {
           </button>
         </div>
         {jadwalMsg && <div style={{ background: jadwalMsg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${jadwalMsg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 13, color: jadwalMsg.includes("✅") ? "#065f46" : "#dc2626" }}>{jadwalMsg}</div>}
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, padding: 12, background: jadwal.aktif ? "#f0fdf4" : "#f8fafc", borderRadius: 10, border: `1px solid ${jadwal.aktif ? "#a7f3d0" : "#e5e7eb"}` }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
-            <input type="checkbox" checked={jadwal.aktif} onChange={e => setJadwal({ ...jadwal, aktif: e.target.checked })} style={{ width: 18, height: 18, cursor: "pointer" }} />
-            {jadwal.aktif ? "🟢 Jadwal Aktif" : "⚪ Jadwal Nonaktif"}
-          </label>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 14 }}>
-          <div>
-            <label style={lStyle}>Tanggal Pengiriman (tiap bulan)</label>
-            <select style={iStyle} value={jadwal.tanggal} onChange={e => setJadwal({ ...jadwal, tanggal: Number(e.target.value) })}>
-              {Array.from({ length: 30 }, (_, i) => i + 1).map(t => (
-                <option key={t} value={t}>Tanggal {t}</option>
-              ))}
-            </select>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>Maks tanggal 30 (aman untuk semua bulan)</div>
-          </div>
-          <div>
-            <label style={lStyle}>Jam Pengiriman</label>
-            <input style={iStyle} type="time" value={jadwal.jam} onChange={e => setJadwal({ ...jadwal, jam: e.target.value })} />
-          </div>
-        </div>
-
-        {jadwal.aktif && (
-          <div style={{ background: "#fffbeb", borderRadius: 8, padding: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
-            ⚡ Pengingat akan otomatis dikirim setiap <b>tanggal {jadwal.tanggal}</b> pukul <b>{jadwal.jam}</b> WIB ke semua wali yang masih punya tunggakan.
-          </div>
-        )}
-
-        <button style={{ ...btnBlue, padding: "9px 18px" }} onClick={handleSimpanJadwal}>💾 Simpan Jadwal</button>
       </div>
 
       {/* DAFTAR PER SANTRI */}
