@@ -1135,7 +1135,10 @@ function DataSantri({ santri, headers, onRefresh }) {
   const handleSave = async (id) => {
     try {
       await axios.put(`${API}/santri/${id}`, form, { headers });
-      setEditSantri(null); setMsg("✅ Data berhasil diupdate!"); onRefresh();
+      setEditSantri(null);
+      setMsg("✅ Data berhasil diupdate!");
+      AdminDashboard._cache = null; // hapus cache agar data fresh
+      onRefresh();
       setTimeout(() => setMsg(""), 3000);
     } catch (e) { setMsg("❌ Gagal: " + e.response?.data?.message); }
   };
