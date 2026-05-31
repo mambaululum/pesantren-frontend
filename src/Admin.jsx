@@ -1130,7 +1130,15 @@ function DataSantri({ santri, headers, onRefresh }) {
   const [showPass, setShowPass] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const handleEdit = (s) => { setEditSantri(s.id); setForm({ nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "", username: s.username || "" }); setShowPass(false); };
+  const handleKirimAkun = async (s) => {
+    if (!s.no_hp) { setMsg("❌ Nomor WA wali belum diisi!"); return; }
+    if (!confirm(`Kirim info akun ke WA wali ${s.nama}?`)) return;
+    try {
+      await axios.post(`${API}/santri/kirim-akun`, { user_id: s.id }, { headers });
+      setMsg("✅ Info akun berhasil dikirim ke WA wali!");
+      setTimeout(() => setMsg(""), 3000);
+    } catch (e) { setMsg("❌ Gagal: " + e.response?.data?.message); }
+  }; nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "", username: s.username || "" }); setShowPass(false); };
 
   const handleSave = async (id) => {
     try {
