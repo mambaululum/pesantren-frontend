@@ -2840,6 +2840,8 @@ function Pengumuman({ santri, headers }) {
     judul: "",
     pesan: "",
     target: "semua", // "semua" | "pilihan"
+    kirim_grup: false,
+    grup_id: "",
   });
   const [selectedSantri, setSelectedSantri] = useState([]);
   const [file, setFile] = useState(null);
@@ -2886,6 +2888,7 @@ function Pengumuman({ santri, headers }) {
         target_ids: targets,
         file_base64: fileBase64,
         file_name: fileName,
+        grup_id: form.kirim_grup ? form.grup_id : null,
       }, { headers });
 
       setMsg("✅ " + res.data.message);
@@ -2949,6 +2952,25 @@ function Pengumuman({ santri, headers }) {
               <input type="radio" value="pilihan" checked={form.target === "pilihan"} onChange={() => setForm({...form, target: "pilihan"})} />
               <span style={{ fontWeight: 600, fontSize: 13 }}>Pilih Santri</span>
             </label>
+          </div>
+
+          {/* Kirim ke Grup WA */}
+          <div style={{ marginTop: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 14px", borderRadius: 8, border: `2px solid ${form.kirim_grup ? "#059669" : "#e5e7eb"}`, background: form.kirim_grup ? "#f0fdf4" : "white", width: "fit-content" }}>
+              <input type="checkbox" checked={form.kirim_grup} onChange={e => setForm({...form, kirim_grup: e.target.checked})} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>📢 Juga kirim ke Grup WA</span>
+            </label>
+            {form.kirim_grup && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  placeholder="ID Grup WA (contoh: 1234567890-1234567890@g.us)"
+                  value={form.grup_id}
+                  onChange={e => setForm({...form, grup_id: e.target.value})}
+                  style={{ width: "100%", border: "2px solid #e5e7eb", borderRadius: 10, padding: "10px 14px", fontSize: 14, boxSizing: "border-box" }}
+                />
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Dapatkan ID grup dari dashboard Fonnte → Device → Get Group</div>
+              </div>
+            )}
           </div>
         </div>
 
