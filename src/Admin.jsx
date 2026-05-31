@@ -685,6 +685,13 @@ function InputCicilan({ santri: santriRaw, headers }) {
     setRiwayatBayar(res.data);
   };
 
+  const [modeBulk, setModeBulk] = React.useState(false);
+  const [selectedTagihanBulk, setSelectedTagihanBulk] = React.useState([]);
+  const [formBulk, setFormBulk] = React.useState({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+  const [keteranganBulk, setKeteranganBulk] = React.useState("");
+  const [showKonfirmasiBulk, setShowKonfirmasiBulk] = React.useState(false);
+  const [resultBulk, setResultBulk] = React.useState(null);
+
   const handleSelectTagihan = (t) => {
     console.log('selectedTagihan data:', JSON.stringify(t));
     setSelectedTagihan(t);
@@ -694,6 +701,41 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
   const totalSudahBayar = riwayatBayar.reduce((a, b) => a + Number(b.jumlah_bayar), 0);
   const sisaTagihan = selectedTagihan ? Number(selectedTagihan.jumlah) - totalSudahBayar : 0;
+
+  // BULK: toggle centang tagihan
+  const handleToggleBulk = (t) => {
+    setSelectedTagihanBulk(prev =>
+      prev.find(x => x.id === t.id) ? prev.filter(x => x.id !== t.id) : [...prev, t]
+    );
+  };
+
+  // BULK: hitung total sisa tagihan yang dipilih
+  const totalSisaBulk = selectedTagihanBulk.reduce((a, t) => a + Math.round(Number(t.jumlah) - (t.sudah_dicicil || 0)), 0);
+
+  // BULK: simpan pembayaran
+  const handleSimpanBulk = async () => {
+    if (selectedTagihanBulk.length === 0) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
+    if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar!"); return; }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/pembayaran-bulk`, {
+        user_id: selectedUser.id,
+        tagihan_ids: selectedTagihanBulk.map(t => t.id),
+        jumlah_total: Number(formBulk.jumlah_total),
+        tanggal_bayar: formBulk.tanggal_bayar,
+        keterangan: keteranganBulk,
+      }, { headers });
+      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas. 📲 Notifikasi WA terkirim.`);
+      setSelectedTagihanBulk([]);
+      setFormBulk({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+      setKeteranganBulk("");
+      setShowKonfirmasiBulk(false);
+      loadTagihan(selectedUser.id);
+      setSelectedTagihan(null);
+    } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
+    setLoading(false);
+    setTimeout(() => setMsg(""), 5000);
+  };
 
   // Langkah 1: klik Simpan → jika ada kelebihan, tampilkan form konfirmasi dulu
   const handleBayar = () => {
@@ -921,18 +963,72 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
       {selectedUser && tagihan.length > 0 && (
         <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-          <label style={lStyle}>2. Pilih Tagihan yang Akan Dibayar</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <label style={lStyle}>2. Pilih Tagihan yang Akan Dibayar</label>
+            <button
+              style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid #059669", background: modeBulk ? "#059669" : "white", color: modeBulk ? "white" : "#059669", cursor: "pointer", fontWeight: 600 }}
+              onClick={() => { setModeBulk(!modeBulk); setSelectedTagihanBulk([]); setSelectedTagihan(null); setShowKonfirmasiBulk(false); }}
+            >
+              {modeBulk ? "✓ Mode Bulk" : "☑️ Bayar Beberapa"}
+            </button>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {tagihan.map(t => {
-              const isSelected = selectedTagihan?.id === t.id;
+              const isSelected = modeBulk ? selectedTagihanBulk.find(x => x.id === t.id) : selectedTagihan?.id === t.id;
               return (
-                <div key={t.id} onClick={() => handleSelectTagihan(t)} style={{ padding: "12px 16px", borderRadius: 10, border: `2px solid ${isSelected ? "#059669" : "#e5e7eb"}`, background: isSelected ? "#f0fdf4" : "white", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{t.jenis}</span>
+                <div key={t.id} onClick={() => modeBulk ? handleToggleBulk(t) : handleSelectTagihan(t)}
+                  style={{ padding: "12px 16px", borderRadius: 10, border: `2px solid ${isSelected ? "#059669" : "#e5e7eb"}`, background: isSelected ? "#f0fdf4" : "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {modeBulk && (
+                    <span style={{ marginRight: 10, fontSize: 18, color: isSelected ? "#059669" : "#cbd5e1" }}>
+                      {isSelected ? "☑️" : "⬜"}
+                    </span>
+                  )}
+                  <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t.jenis}</span>
                   <span style={{ color: "#dc2626", fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
                 </div>
               );
             })}
           </div>
+
+          {/* FORM BULK */}
+          {modeBulk && selectedTagihanBulk.length > 0 && (
+            <div style={{ marginTop: 14, background: "#f0fdf4", borderRadius: 10, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                {selectedTagihanBulk.length} tagihan dipilih — Total sisa: <span style={{ color: "#dc2626" }}>{formatRupiah(totalSisaBulk)}</span>
+              </div>
+              <input
+                style={{ ...iStyle, marginBottom: 8 }}
+                type="number"
+                placeholder="Jumlah bayar total"
+                value={formBulk.jumlah_total}
+                onChange={e => setFormBulk(f => ({ ...f, jumlah_total: e.target.value }))}
+              />
+              <input
+                style={{ ...iStyle, marginBottom: 8 }}
+                type="date"
+                value={formBulk.tanggal_bayar}
+                onChange={e => setFormBulk(f => ({ ...f, tanggal_bayar: e.target.value }))}
+              />
+              <input
+                style={{ ...iStyle, marginBottom: 12 }}
+                placeholder="Keterangan sisa / uang jajan (opsional)"
+                value={keteranganBulk}
+                onChange={e => setKeteranganBulk(e.target.value)}
+              />
+              {formBulk.jumlah_total && Number(formBulk.jumlah_total) > totalSisaBulk && (
+                <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 10 }}>
+                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - totalSisaBulk)}</b> — catat di keterangan
+                </div>
+              )}
+              <button
+                style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 14 }}
+                onClick={handleSimpanBulk}
+                disabled={loading}
+              >
+                {loading ? "Menyimpan..." : `💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
