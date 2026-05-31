@@ -1020,13 +1020,43 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - totalSisaBulk)}</b> — catat di keterangan
                 </div>
               )}
-              <button
-                style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 14 }}
-                onClick={handleSimpanBulk}
-                disabled={loading}
-              >
-                {loading ? "Menyimpan..." : `💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
-              </button>
+              {!showKonfirmasiBulk ? (
+                <button
+                  style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 14 }}
+                  onClick={() => {
+                    if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar dulu!"); return; }
+                    setShowKonfirmasiBulk(true);
+                  }}
+                  disabled={loading}
+                >
+                  {`💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
+                </button>
+              ) : (
+                <div style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 10, padding: 14, marginTop: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📋 Konfirmasi Pembayaran</div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Santri: <b>{selectedUser?.nama_siswa}</b></div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Bayar: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  {keteranganBulk && <div style={{ fontSize: 13, marginBottom: 6 }}>Keterangan: <b>{keteranganBulk}</b></div>}
+                  <div style={{ fontSize: 13, marginBottom: 10, color: "#64748b" }}>📲 Notifikasi WA akan dikirim ke wali santri</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      style={{ ...btnGreen, flex: 1, padding: 12, fontSize: 14 }}
+                      onClick={handleSimpanBulk}
+                      disabled={loading}
+                    >
+                      {loading ? "Menyimpan..." : "✅ Ya, Konfirmasi & Kirim WA"}
+                    </button>
+                    <button
+                      style={{ ...btnGray, padding: "12px 16px" }}
+                      onClick={() => setShowKonfirmasiBulk(false)}
+                      disabled={loading}
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
