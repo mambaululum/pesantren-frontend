@@ -209,7 +209,7 @@ const handleTouchEnd = (e) => {
             headers={headers}
           />
         )}
-        {menu === "santri" && <DataSantri santri={santri} headers={headers} onRefresh={loadSantri} />}
+        {menu === "santri" && <DataSantri santri={santri} headers={headers} onRefresh={() => loadSantri(true)} />}
         {menu === "tagihan" && <DataTagihan santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
         {menu === "cicilan" && <InputCicilan santri={santri} headers={headers} />}
         {menu === "tambah_santri" && <TambahSantri headers={headers} onRefresh={() => { loadSantri(); setMenu("santri"); }} />}
