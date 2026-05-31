@@ -758,6 +758,22 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
       if (kelebihan > 0) {
         setMsg(`✅ Tagihan lunas! Kelebihan ${formatRupiah(kelebihan)} dicatat.${kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""}`);
+      } else if (res.data.lunas && kirimWA && selectedUser?.no_hp) {
+        // Bayar pas lunas — kirim konfirmasi WA
+        try {
+          await axios.post(`${API}/kirim-wa-kelebihan`, {
+            no_hp: selectedUser.no_hp,
+            nama_wali: selectedUser.nama,
+            nama_siswa: selectedUser.nama_siswa,
+            jumlah_bayar: jumlahInput,
+            jumlah_tagihan: Number(selectedTagihan.jumlah),
+            jenis_tagihan: selectedTagihan.jenis,
+            kelebihan: 0,
+            keterangan: keterangan || "",
+            user_id: selectedUser.id,
+          }, { headers });
+        } catch (e) { console.log("WA konfirmasi gagal:", e.message); }
+        setMsg("✅ " + res.data.message + " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit.");
       } else {
         setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
       }
