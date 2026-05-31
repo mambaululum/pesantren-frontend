@@ -2159,21 +2159,7 @@ function Pengingat({ santri, headers }) {
         </button>
       </div>
 
-      {/* JADWAL OTOMATIS */}
-      <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>⏰ Jadwal Pengingat Otomatis</div>
-        <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14, fontSize: 13, color: "#92400e", border: "1px solid #fde68a" }}>
-          ⚠️ <b>Penting:</b> Karena aplikasi di-host di Vercel (serverless), jadwal otomatis tidak bisa berjalan sendiri.<br/>
-          Gunakan <b>cron-job.org</b> (gratis) untuk memanggil URL ini setiap bulan:<br/>
-          <code style={{ background: "#fef3c7", padding: "4px 8px", borderRadius: 6, fontSize: 12, display: "block", marginTop: 6, wordBreak: "break-all" }}>
-            GET https://pesantren-backend.vercel.app/api/admin/cron/pengingat
-          </code>
-          <button onClick={() => window.open("https://cron-job.org", "_blank")} style={{ marginTop: 8, padding: "6px 14px", background: "#f59e0b", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-            🔗 Buka cron-job.org
-          </button>
-        </div>
-        {jadwalMsg && <div style={{ background: jadwalMsg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${jadwalMsg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 13, color: jadwalMsg.includes("✅") ? "#065f46" : "#dc2626" }}>{jadwalMsg}</div>}
-      </div>
+      
 
       {/* DAFTAR PER SANTRI */}
       <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
