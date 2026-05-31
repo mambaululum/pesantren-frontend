@@ -2689,7 +2689,23 @@ function RiwayatPembayaran({ headers }) {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 12, fontSize: 18, fontWeight: 700 }}>📜 Riwayat Pembayaran</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+  <h2 style={{ fontSize: 18, fontWeight: 700 }}>📜 Riwayat Pembayaran</h2>
+  <button onClick={() => {
+    RiwayatPembayaran._cache = null;
+    setLoading(true);
+    axios.get(`${API}/riwayat-pembayaran`, { headers })
+      .then(r => {
+        const result = Array.isArray(r.data) ? r.data : [];
+        RiwayatPembayaran._cache = result;
+        setData(result);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+    🔄 Refresh
+  </button>
+</div>
       <input
         placeholder="Cari nama santri / jenis tagihan..."
         value={search}
