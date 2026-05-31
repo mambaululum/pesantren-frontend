@@ -685,12 +685,12 @@ function InputCicilan({ santri: santriRaw, headers }) {
     setRiwayatBayar(res.data);
   };
 
-  const [modeBulk, setModeBulk] = React.useState(false);
-  const [selectedTagihanBulk, setSelectedTagihanBulk] = React.useState([]);
-  const [formBulk, setFormBulk] = React.useState({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
-  const [keteranganBulk, setKeteranganBulk] = React.useState("");
-  const [showKonfirmasiBulk, setShowKonfirmasiBulk] = React.useState(false);
-  const [resultBulk, setResultBulk] = React.useState(null);
+  const [modeBulk, setModeBulk] = useState(false);
+  const [selectedTagihanBulk, setSelectedTagihanBulk] = useState([]);
+  const [formBulk, setFormBulk] = useState({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+  const [keteranganBulk, setKeteranganBulk] = useState("");
+  const [showKonfirmasiBulk, setShowKonfirmasiBulk] = useState(false);
+  const [resultBulk, setResultBulk] = useState(null);
 
   const handleSelectTagihan = (t) => {
     console.log('selectedTagihan data:', JSON.stringify(t));
