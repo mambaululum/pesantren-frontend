@@ -1642,7 +1642,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
               </div>
 
               <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                >
+                
                 <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => { setShowCopy(!showCopy); setShowForm(false); setCopyReferensi(null); setTagihanReferensi([]); setSearchCopySantri(""); }}>{showCopy ? "❌ Batal Copy" : "📋 Copy Tagihan dari Santri Lain"}</button>
                 <button style={{ background: modeHapusMassal ? "#dc2626" : "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   onClick={() => { setModeHapusMassal(!modeHapusMassal); setSelectedTagihanHapus([]); setShowForm(false); setShowCopy(false); }}>
