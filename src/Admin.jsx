@@ -691,6 +691,8 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const [keteranganBulk, setKeteranganBulk] = useState("");
   const [showKonfirmasiBulk, setShowKonfirmasiBulk] = useState(false);
   const [resultBulk, setResultBulk] = useState(null);
+  const [kirimWABulk, setKirimWABulk] = useState(true);
+  const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
 
   const handleSelectTagihan = (t) => {
     console.log('selectedTagihan data:', JSON.stringify(t));
@@ -724,6 +726,8 @@ function InputCicilan({ santri: santriRaw, headers }) {
         jumlah_total: Number(formBulk.jumlah_total),
         tanggal_bayar: formBulk.tanggal_bayar,
         keterangan: keteranganBulk,
+        metode_bayar: metodeBayarBulk,
+        kirim_notif: kirimWABulk,
       }, { headers });
       setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas. 📲 Notifikasi WA terkirim.`);
       setSelectedTagihanBulk([]);
@@ -1038,14 +1042,36 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   <div style={{ fontSize: 13, marginBottom: 6 }}>Total Bayar: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
                   <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
                   {keteranganBulk && <div style={{ fontSize: 13, marginBottom: 6 }}>Keterangan: <b>{keteranganBulk}</b></div>}
-                  <div style={{ fontSize: 13, marginBottom: 10, color: "#64748b" }}>📲 Notifikasi WA akan dikirim ke wali santri</div>
+
+                  {/* Metode Bayar */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>💳 Metode Pembayaran:</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {["tunai", "transfer"].map(m => (
+                        <button key={m} onClick={() => setMetodeBayarBulk(m)}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `2px solid ${metodeBayarBulk === m ? "#059669" : "#e5e7eb"}`, background: metodeBayarBulk === m ? "#f0fdf4" : "white", fontWeight: 600, fontSize: 13, cursor: "pointer", color: metodeBayarBulk === m ? "#059669" : "#64748b" }}>
+                          {m === "tunai" ? "💵 Tunai" : "🏦 Transfer"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Kirim Notif WA */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}
+                    onClick={() => setKirimWABulk(!kirimWABulk)}>
+                    <span style={{ fontSize: 20, color: kirimWABulk ? "#059669" : "#cbd5e1" }}>
+                      {kirimWABulk ? "☑️" : "⬜"}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#374151" }}>📲 Kirim notifikasi WA ke wali santri</span>
+                  </div>
+
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       style={{ ...btnGreen, flex: 1, padding: 12, fontSize: 14 }}
                       onClick={handleSimpanBulk}
                       disabled={loading}
                     >
-                      {loading ? "Menyimpan..." : "✅ Ya, Konfirmasi & Kirim WA"}
+                      {loading ? "Menyimpan..." : kirimWABulk ? "✅ Konfirmasi & Kirim WA" : "✅ Konfirmasi"}
                     </button>
                     <button
                       style={{ ...btnGray, padding: "12px 16px" }}
