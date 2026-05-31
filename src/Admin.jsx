@@ -1138,7 +1138,9 @@ function DataSantri({ santri, headers, onRefresh }) {
       setMsg("✅ Info akun berhasil dikirim ke WA wali!");
       setTimeout(() => setMsg(""), 3000);
     } catch (e) { setMsg("❌ Gagal: " + e.response?.data?.message); }
-  }; nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "", username: s.username || "" }); setShowPass(false); };
+  };
+
+  const handleEdit = (s) => { setEditSantri(s.id); setForm({ nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "", username: s.username || "" }); setShowPass(false); };
 
   const handleSave = async (id) => {
     try {
