@@ -739,6 +739,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             nama_siswa: selectedUser.nama_siswa,
             jumlah_bayar: jumlahInput,
             jumlah_tagihan: Number(selectedTagihan.jumlah),
+            jenis_tagihan: selectedTagihan.jenis,
             kelebihan,
             keterangan,
             user_id: selectedUser.id,
