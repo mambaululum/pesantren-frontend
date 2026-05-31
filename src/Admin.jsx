@@ -753,9 +753,9 @@ function InputCicilan({ santri: santriRaw, headers }) {
       }
 
       if (kelebihan > 0) {
-        setMsg(`✅ Tagihan lunas! Kelebihan ${formatRupiah(kelebihan)} dicatat.${kirimWA && selectedUser?.no_hp ? " Notifikasi WA terkirim." : ""}`);
+        setMsg(`✅ Tagihan lunas! Kelebihan ${formatRupiah(kelebihan)} dicatat.${kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""}`);
       } else {
-        setMsg("✅ " + res.data.message);
+        setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
       }
       setForm({ jumlah_bayar: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
       setShowKonfirmasiLebih(false);
