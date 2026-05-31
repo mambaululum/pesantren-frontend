@@ -1197,7 +1197,8 @@ function DataSantri({ santri, headers, onRefresh }) {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={btnBlue} onClick={() => handleEdit(s)}>✏️ Edit</button>
-                  <button style={btnRed} onClick={() => handleDelete(s.id, s.nama_siswa)}>🗑️ Hapus</button>
+<button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => handleKirimAkun(s)}>📲 Kirim Akun</button>
+<button style={btnRed} onClick={() => handleDelete(s.id, s.nama_siswa)}>🗑️ Hapus</button>
                 </div>
               </div>
             )}
