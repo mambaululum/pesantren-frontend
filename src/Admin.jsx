@@ -731,6 +731,10 @@ function InputCicilan({ santri: santriRaw, headers }) {
       }, { headers });
 
       // Kirim WA jika ada kelebihan dan admin pilih kirim
+      console.log('selectedTagihan:', JSON.stringify(selectedTagihan));
+if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
+        try {
+          await axios.post(`${API}/kirim-wa-kelebihan`, {
       if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
         try {
           await axios.post(`${API}/kirim-wa-kelebihan`, {
