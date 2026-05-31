@@ -735,9 +735,6 @@ function InputCicilan({ santri: santriRaw, headers }) {
 if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
         try {
           await axios.post(`${API}/kirim-wa-kelebihan`, {
-      if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
-        try {
-          await axios.post(`${API}/kirim-wa-kelebihan`, {
             no_hp: selectedUser.no_hp,
             nama_wali: selectedUser.nama,
             nama_siswa: selectedUser.nama_siswa,
