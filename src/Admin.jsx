@@ -1130,7 +1130,7 @@ function DataSantri({ santri, headers, onRefresh }) {
   const [showPass, setShowPass] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const handleEdit = (s) => { setEditSantri(s.id); setForm({ nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "" }); setShowPass(false); };
+  const handleEdit = (s) => { setEditSantri(s.id); setForm({ nama: s.nama, nama_siswa: s.nama_siswa, kelas: s.kelas, password: "", no_hp: s.no_hp || "", username: s.username || "" }); setShowPass(false); };
 
   const handleSave = async (id) => {
     try {
@@ -1168,6 +1168,10 @@ function DataSantri({ santri, headers, onRefresh }) {
                   <div>
                     <label style={lStyle}>📱 No. HP Wali (notif WA)</label>
                     <input style={iStyle} placeholder="contoh: 08123456789" value={form.no_hp || ""} onChange={e => setForm({ ...form, no_hp: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={lStyle}>Username</label>
+                    <input style={iStyle} value={form.username || ""} onChange={e => setForm({ ...form, username: e.target.value })} />
                   </div>
                   <div style={{ gridColumn: "1/-1" }}>
                     <label style={lStyle}>Password Baru (kosongkan jika tidak diubah)</label>
