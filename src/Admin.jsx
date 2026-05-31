@@ -716,7 +716,11 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setKirimWALebih(true);
       setShowKonfirmasiLebih(true);
     } else {
-      handleSimpanBayar(jumlahInput, jumlahInput, 0, form.keterangan, false);
+      // Bayar pas = lunas, tampilkan konfirmasi kirim WA
+      setPendingBayar({ jumlahInput, jumlahBayar: jumlahInput, kelebihan: 0, isCicilan: false, uangJajan: 0 });
+      setKeteranganLebih(form.keterangan || "");
+      setKirimWALebih(true);
+      setShowKonfirmasiLebih(true);
     }
   };
 
