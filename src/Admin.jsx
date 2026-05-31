@@ -733,6 +733,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
       // Simpan data tagihan sebelum di-null
       const tagihanSnapshot = { ...selectedTagihan };
+      console.log('tagihanSnapshot:', JSON.stringify(tagihanSnapshot));
 
       // Kirim WA jika ada kelebihan dan admin pilih kirim
       if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
