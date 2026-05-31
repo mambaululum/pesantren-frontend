@@ -741,6 +741,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             jumlah_tagihan: Number(selectedTagihan.jumlah),
             kelebihan,
             keterangan,
+            user_id: selectedUser.id,
           }, { headers });
         } catch (e) { console.log("WA kelebihan gagal:", e.message); }
       }
