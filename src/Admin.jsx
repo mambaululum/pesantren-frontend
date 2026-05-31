@@ -686,6 +686,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
   };
 
   const handleSelectTagihan = (t) => {
+    console.log('selectedTagihan data:', JSON.stringify(t));
     setSelectedTagihan(t);
     setEditCicilan(null);
     loadRiwayat(t.id);
