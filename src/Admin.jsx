@@ -731,9 +731,11 @@ function InputCicilan({ santri: santriRaw, headers }) {
         keterangan: keterangan,
       }, { headers });
 
+      // Simpan data tagihan sebelum di-null
+      const tagihanSnapshot = { ...selectedTagihan };
+
       // Kirim WA jika ada kelebihan dan admin pilih kirim
-      console.log('selectedTagihan:', JSON.stringify(selectedTagihan));
-if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
+      if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
         try {
           await axios.post(`${API}/kirim-wa-kelebihan`, {
             no_hp: selectedUser.no_hp,
@@ -741,7 +743,7 @@ if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
             nama_siswa: selectedUser.nama_siswa,
             jumlah_bayar: jumlahInput,
             jumlah_tagihan: Number(selectedTagihan.jumlah),
-            jenis_tagihan: selectedTagihan.jenis,
+            jenis_tagihan: tagihanSnapshot.jenis,
             kelebihan,
             keterangan,
             user_id: selectedUser.id,
