@@ -1432,6 +1432,8 @@ function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
 
   // ── Sub-tab ──────────────────────────────────────────────
   const [subTab, setSubTab] = useState("kelola");
+const [statusJenis, setStatusJenis] = useState("");
+const [searchStatusJenis, setSearchStatusJenis] = useState("");
   const [showMassal, setShowMassal] = useState(false);
   const [massalForm, setMassalForm] = useState({ jenis: "", jumlah: "", semester: "", status: "belum", kirim_notif: true });
   const [massalSantri, setMassalSantri] = useState([]);
@@ -1675,7 +1677,13 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>💰 Tagihan</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>💰 Tagihan</div>
+
+{/* Tab switch */}
+<div style={{ background: "white", borderRadius: 12, display: "flex", gap: 0, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+  <button style={tabStyle(subTab === "kelola")} onClick={() => setSubTab("kelola")}>🗂️ Kelola Tagihan</button>
+  <button style={tabStyle(subTab === "status_jenis")} onClick={() => setSubTab("status_jenis")}>📊 Status per Jenis</button>
+</div>
 
       {/* TOMBOL TAMBAH MASSAL */}
       <div style={{ marginBottom: 16 }}>
@@ -1765,8 +1773,8 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
 
-      {/* ══════════════ KELOLA TAGIHAN ══════════════ */}
-      <>
+    {/* ══════════════ KELOLA TAGIHAN ══════════════ */}
+      subTab === "kelola" && <>
           <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
             <label style={lStyle}>Pilih Santri:</label>
             {/* Kotak Pencarian */}
@@ -2129,6 +2137,95 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
             </>
           )}
         </>
+{/* ══════════════ STATUS PER JENIS TAGIHAN ══════════════ */}
+{subTab === "status_jenis" && (() => {
+  // Kumpulkan semua jenis tagihan unik dari rekapData
+  const semuaJenis = [...new Set(
+    Object.values(rekapData).flat().map(t => t.jenis).filter(Boolean)
+  )].sort();
+
+  const jenisTerpilih = statusJenis || semuaJenis[0] || "";
+
+  const hasilFilter = santri
+    .filter(s => s.nama_siswa.toLowerCase().includes(searchStatusJenis.toLowerCase()))
+    .map(s => {
+      const tg = rekapData[s.id] || [];
+      const tagihan = tg.find(t => t.jenis === jenisTerpilih);
+      return { ...s, tagihan };
+    });
+
+  const sudahBayar = hasilFilter.filter(s => s.tagihan?.status === "lunas");
+  const belumBayar = hasilFilter.filter(s => s.tagihan && s.tagihan.status !== "lunas");
+  const tidakAda = hasilFilter.filter(s => !s.tagihan);
+
+  return (
+    <div>
+      {loadingRekap ? (
+        <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>⏳ Memuat data...</div>
+      ) : (
+        <>
+          {/* Toolbar */}
+          <div style={{ background: "white", borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <select
+              value={jenisTerpilih}
+              onChange={e => setStatusJenis(e.target.value)}
+              style={{ ...iStyle, maxWidth: 260, padding: "8px 12px", fontSize: 13 }}
+            >
+              {semuaJenis.length === 0
+                ? <option>-- Belum ada data --</option>
+                : semuaJenis.map((j, i) => <option key={i} value={j}>{j}</option>)
+              }
+            </select>
+            <input
+              placeholder="🔍 Cari nama santri..."
+              value={searchStatusJenis}
+              onChange={e => setSearchStatusJenis(e.target.value)}
+              style={{ ...iStyle, maxWidth: 200, padding: "8px 12px", fontSize: 13 }}
+            />
+            <button style={{ ...btnBlue, padding: "7px 14px", fontSize: 12, opacity: loadingRekap ? 0.6 : 1 }}
+              onClick={() => { setRekapData({}); loadSemuaRekap(); }} disabled={loadingRekap}>
+              🔄 Refresh
+            </button>
+          </div>
+
+          {/* Summary */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+            <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "#065f46" }}>✅ Lunas: {sudahBayar.length} santri</div>
+            <div style={{ background: "#fef2f2", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "#dc2626" }}>⏳ Belum: {belumBayar.length} santri</div>
+            {tidakAda.length > 0 && <div style={{ background: "#f1f5f9", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "#64748b" }}>➖ Tidak ada tagihan: {tidakAda.length} santri</div>}
+          </div>
+
+          {/* Tabel */}
+          {[["✅ Sudah Bayar", sudahBayar, "#ecfdf5", "#065f46"], ["⏳ Belum Bayar", belumBayar, "#fef2f2", "#dc2626"]].map(([label, list, bg, color]) => (
+            <div key={label} style={{ background: "white", borderRadius: 14, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+              <div style={{ background: bg, padding: "10px 16px", fontWeight: 700, fontSize: 14, color }}>{label} ({list.length})</div>
+              {list.length === 0
+                ? <div style={{ padding: "14px 16px", fontSize: 13, color: "#94a3b8" }}>Tidak ada data.</div>
+                : list.map((s, i) => (
+                  <div key={s.id} style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{s.nama_siswa}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{s.kelas}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: s.tagihan?.status === "lunas" ? "#059669" : "#dc2626" }}>{formatRupiah(s.tagihan?.jumlah)}</div>
+                      {s.tagihan?.status === "lunas" && s.tagihan?.tanggal_bayar && (
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>Dibayar: {s.tagihan.tanggal_bayar.split("T")[0]}</div>
+                      )}
+                      {s.tagihan?.status !== "lunas" && Number(s.tagihan?.sudah_dicicil) > 0 && (
+                        <div style={{ fontSize: 11, color: "#f59e0b" }}>Cicilan: {formatRupiah(s.tagihan.sudah_dicicil)}</div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+})()}
 
       {/* ══════════════ TAB REKAP PEMBAYARAN ══════════════ */}
       {false && (
