@@ -207,6 +207,7 @@ const handleTouchEnd = (e) => {
             totalTunggakan={totalTunggakan}
             santriLunas={santriLunas}
             headers={headers}
+            onRefresh={() => loadSantri(true)}
           />
         )}
         {menu === "santri" && <DataSantri santri={santri} headers={headers} onRefresh={() => loadSantri(true)} />}
@@ -328,10 +329,17 @@ function HeaderLaporan({ subtitle }) {
 }
 
 
-function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTunggakan, santriLunas, headers }) {
+function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTunggakan, santriLunas, headers, onRefresh }) {
   const [tab, setTab] = useState("semua"); // "semua" | "persantri"
   const [exporting, setExporting] = useState(false);
   const [logoBase64, setLogoBase64] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (onRefresh) await onRefresh();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     toBase64("/Mu.png").then(b64 => { if (b64) setLogoBase64(b64); });
@@ -381,7 +389,26 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>📊 Rekap Keuangan</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>📊 Rekap Keuangan</div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "#ecfdf5", border: "1.5px solid #a7f3d0",
+            borderRadius: 10, padding: "8px 14px",
+            fontSize: 13, fontWeight: 600, color: "#065f46",
+            cursor: (refreshing || loading) ? "not-allowed" : "pointer",
+            opacity: (refreshing || loading) ? 0.6 : 1,
+            transition: "opacity 0.2s"
+          }}
+        >
+          <span style={{ display: "inline-block", animation: refreshing ? "spin 0.8s linear infinite" : "none" }}>🔄</span>
+          {refreshing ? "Memuat..." : "Refresh"}
+          <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }` }} />
+        </button>
+      </div>
 
       {/* Tab switch */}
       <div style={{ background: "white", borderRadius: 12, display: "flex", gap: 0, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
@@ -2915,6 +2942,7 @@ function RiwayatNotif({ headers }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [resending, setResending] = useState({});
 
   const load = (force = false) => {
     if (RiwayatNotif._cache && !force) {
@@ -2931,6 +2959,19 @@ function RiwayatNotif({ headers }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  const resendWA = async (id) => {
+    setResending(prev => ({ ...prev, [id]: true }));
+    try {
+      await axios.post(`${API}/resend-wa/${id}`, {}, { headers });
+      RiwayatNotif._cache = null;
+      load(true);
+    } catch (e) {
+      alert("Gagal kirim ulang: " + (e.response?.data?.message || e.message));
+    } finally {
+      setResending(prev => ({ ...prev, [id]: false }));
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -3025,6 +3066,22 @@ function RiwayatNotif({ headers }) {
                         {r.pesan}
                       </pre>
                     </details>
+                    {r.status === "gagal" && (
+                      <button
+                        onClick={() => resendWA(r.id)}
+                        disabled={resending[r.id]}
+                        style={{
+                          marginTop: 6, display: "block",
+                          padding: "4px 10px", borderRadius: 6,
+                          background: resending[r.id] ? "#e2e8f0" : "#f59e0b",
+                          color: resending[r.id] ? "#94a3b8" : "#fff",
+                          border: "none", cursor: resending[r.id] ? "not-allowed" : "pointer",
+                          fontSize: 11, fontWeight: 600
+                        }}
+                      >
+                        {resending[r.id] ? "⏳ Mengirim..." : "🔁 Kirim Ulang"}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
