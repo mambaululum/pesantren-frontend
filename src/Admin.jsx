@@ -2572,6 +2572,10 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingDup, setLoadingDup] = useState(false);
   const [dupProgress, setDupProgress] = useState({ done: 0, total: 0 });
+  // Fitur pilih santri tertentu
+  const [pilihanSantri, setPilihanSantri] = useState("semua"); // "semua" | "pilihan"
+  const [santriTerpilih, setSantriTerpilih] = useState(new Set());
+  const [filterNamaDup, setFilterNamaDup] = useState("");
 
   const loadSemesters = async (force = false) => {
     if (ManajemenSemester._cache && !force) {
@@ -2679,22 +2683,29 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
     if (dupForm.semesterAsal) loadPreview(dupForm.semesterAsal);
   }, [dupForm.semesterAsal]);
 
-  // ── Duplikasi tagihan ke semua santri ──
+  // ── Duplikasi tagihan ke santri terpilih ──
   const handleDuplikasi = async () => {
     if (!dupForm.semesterAsal) { showMsg("❌ Pilih semester asal!"); return; }
     if (!dupForm.semesterTujuan) { showMsg("❌ Pilih semester tujuan!"); return; }
     if (dupForm.semesterAsal === dupForm.semesterTujuan) { showMsg("❌ Semester asal dan tujuan tidak boleh sama!"); return; }
+
+    const targetSantri = pilihanSantri === "pilihan"
+      ? santri.filter(s => santriTerpilih.has(s.id))
+      : santri;
+
+    if (targetSantri.length === 0) { showMsg("❌ Pilih minimal 1 santri!"); return; }
+
     if (!confirm(
-      `Duplikasi tagihan dari "${dupForm.semesterAsal}" → "${dupForm.semesterTujuan}" untuk ${santri.length} santri?\n\n` +
+      `Duplikasi tagihan dari "${dupForm.semesterAsal}" → "${dupForm.semesterTujuan}" untuk ${targetSantri.length} santri?\n\n` +
       `Jenis tagihan dan jumlah akan sama persis.\nStatus semua tagihan baru: BELUM BAYAR.\n\nLanjutkan?`
     )) return;
 
     setLoadingDup(true);
-    setDupProgress({ done: 0, total: santri.length });
+    setDupProgress({ done: 0, total: targetSantri.length });
     let berhasil = 0, gagal = 0;
 
-    for (let i = 0; i < santri.length; i++) {
-      const s = santri[i];
+    for (let i = 0; i < targetSantri.length; i++) {
+      const s = targetSantri[i];
       try {
         // Ambil tagihan santri ini dari semester asal
         const res = await axios.get(`${API}/tagihan/${s.id}`, { headers });
@@ -2724,7 +2735,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
           }
         }
       } catch (e) { gagal++; }
-      setDupProgress({ done: i + 1, total: santri.length });
+      setDupProgress({ done: i + 1, total: targetSantri.length });
     }
 
     setLoadingDup(false);
@@ -2849,7 +2860,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
             <div style={{ fontWeight: 700, fontSize: 15 }}>🔁 Duplikasi Tagihan ke Semester Baru</div>
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Salin jenis & jumlah tagihan dari semester lama ke semua santri sekaligus</div>
           </div>
-          <button style={{ ...btnBlue, padding: "7px 14px", fontSize: 13 }} onClick={() => setShowDuplikasi(!showDuplikasi)}>
+          <button style={{ ...btnBlue, padding: "7px 14px", fontSize: 13 }} onClick={() => { setShowDuplikasi(!showDuplikasi); if (showDuplikasi) { setPilihanSantri("semua"); setSantriTerpilih(new Set()); setFilterNamaDup(""); } }}>
             {showDuplikasi ? "❌ Tutup" : "🔁 Mulai Duplikasi"}
           </button>
         </div>
@@ -2903,6 +2914,105 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
                 </div>
               )}
 
+              {/* Pilihan target santri */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={lStyle}>Target Santri</label>
+                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                  <button
+                    style={{ ...( pilihanSantri === "semua" ? btnGreen : btnGray), padding: "6px 14px", fontSize: 13 }}
+                    onClick={() => { setPilihanSantri("semua"); setSantriTerpilih(new Set()); }}
+                  >
+                    👥 Semua Santri ({santri.length})
+                  </button>
+                  <button
+                    style={{ ...(pilihanSantri === "pilihan" ? btnBlue : btnGray), padding: "6px 14px", fontSize: 13 }}
+                    onClick={() => setPilihanSantri("pilihan")}
+                  >
+                    ☑️ Pilih Santri Tertentu
+                  </button>
+                </div>
+
+                {pilihanSantri === "pilihan" && (
+                  <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 10, padding: 12 }}>
+                    {/* Search & Select All */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
+                      <input
+                        style={{ ...iStyle, flex: 1, marginBottom: 0 }}
+                        placeholder="🔍 Cari nama santri..."
+                        value={filterNamaDup}
+                        onChange={e => setFilterNamaDup(e.target.value)}
+                      />
+                      <button
+                        style={{ ...btnBlue, padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }}
+                        onClick={() => {
+                          const filtered = santri.filter(s =>
+                            s.nama_siswa?.toLowerCase().includes(filterNamaDup.toLowerCase())
+                          );
+                          const allSelected = filtered.every(s => santriTerpilih.has(s.id));
+                          const next = new Set(santriTerpilih);
+                          if (allSelected) {
+                            filtered.forEach(s => next.delete(s.id));
+                          } else {
+                            filtered.forEach(s => next.add(s.id));
+                          }
+                          setSantriTerpilih(next);
+                        }}
+                      >
+                        {(() => {
+                          const filtered = santri.filter(s =>
+                            s.nama_siswa?.toLowerCase().includes(filterNamaDup.toLowerCase())
+                          );
+                          return filtered.every(s => santriTerpilih.has(s.id)) ? "☐ Batal Semua" : "☑️ Pilih Semua";
+                        })()}
+                      </button>
+                    </div>
+
+                    {/* Keterangan jumlah terpilih */}
+                    <div style={{ fontSize: 12, color: "#0369a1", marginBottom: 8, fontWeight: 600 }}>
+                      ✅ {santriTerpilih.size} santri terpilih dari {santri.length}
+                    </div>
+
+                    {/* Daftar santri dengan checkbox */}
+                    <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+                      {santri
+                        .filter(s => s.nama_siswa?.toLowerCase().includes(filterNamaDup.toLowerCase()))
+                        .map(s => (
+                          <label
+                            key={s.id}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10, padding: "7px 10px",
+                              borderRadius: 7, cursor: "pointer", fontSize: 13,
+                              background: santriTerpilih.has(s.id) ? "#eff6ff" : "#f8fafc",
+                              border: `1px solid ${santriTerpilih.has(s.id) ? "#bfdbfe" : "#e5e7eb"}`,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={santriTerpilih.has(s.id)}
+                              onChange={() => {
+                                const next = new Set(santriTerpilih);
+                                if (next.has(s.id)) next.delete(s.id);
+                                else next.add(s.id);
+                                setSantriTerpilih(next);
+                              }}
+                              style={{ width: 16, height: 16, accentColor: "#3b82f6" }}
+                            />
+                            <span style={{ fontWeight: santriTerpilih.has(s.id) ? 600 : 400 }}>
+                              {s.nama_siswa}
+                            </span>
+                            {s.kelas && (
+                              <span style={{ fontSize: 11, color: "#64748b", marginLeft: "auto" }}>
+                                {s.kelas}
+                              </span>
+                            )}
+                          </label>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Progress bar saat proses */}
               {loadingDup && (
                 <div style={{ background: "#f0fdf4", borderRadius: 8, padding: 12, marginBottom: 12 }}>
@@ -2917,11 +3027,19 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <button
-                  style={{ ...btnGreen, padding: "10px 20px", fontSize: 14, opacity: (loadingDup || !dupForm.semesterAsal || !dupForm.semesterTujuan) ? 0.6 : 1 }}
+                  style={{
+                    ...btnGreen, padding: "10px 20px", fontSize: 14,
+                    opacity: (loadingDup || !dupForm.semesterAsal || !dupForm.semesterTujuan || (pilihanSantri === "pilihan" && santriTerpilih.size === 0)) ? 0.6 : 1
+                  }}
                   onClick={handleDuplikasi}
-                  disabled={loadingDup || !dupForm.semesterAsal || !dupForm.semesterTujuan}
+                  disabled={loadingDup || !dupForm.semesterAsal || !dupForm.semesterTujuan || (pilihanSantri === "pilihan" && santriTerpilih.size === 0)}
                 >
-                  {loadingDup ? "⏳ Memproses..." : `🔁 Duplikasi ke Semua ${santri.length} Santri`}
+                  {loadingDup
+                    ? "⏳ Memproses..."
+                    : pilihanSantri === "pilihan"
+                      ? `🔁 Duplikasi ke ${santriTerpilih.size} Santri Terpilih`
+                      : `🔁 Duplikasi ke Semua ${santri.length} Santri`
+                  }
                 </button>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
                   Santri yang sudah punya tagihan di semester tujuan akan dilewati otomatis.
