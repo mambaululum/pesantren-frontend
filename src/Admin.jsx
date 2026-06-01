@@ -2849,6 +2849,8 @@ function RiwayatPembayaran({ headers }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tanggalDari, setTanggalDari] = useState("");
+  const [tanggalSampai, setTanggalSampai] = useState("");
 
   useEffect(() => {
     // Pakai cache kalau data sudah ada
@@ -2867,11 +2869,16 @@ function RiwayatPembayaran({ headers }) {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = data.filter(r =>
-    (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
-    (r.nama_wali || "").toLowerCase().includes(search.toLowerCase()) ||
-    (r.jenis_tagihan || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = data.filter(r => {
+    const cocokSearch =
+      (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.nama_wali || "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.jenis_tagihan || "").toLowerCase().includes(search.toLowerCase());
+    const tgl = r.tanggal_bayar ? new Date(r.tanggal_bayar) : null;
+    const cocokDari = tanggalDari ? tgl && tgl >= new Date(tanggalDari) : true;
+    const cocokSampai = tanggalSampai ? tgl && tgl <= new Date(tanggalSampai + "T23:59:59") : true;
+    return cocokSearch && cocokDari && cocokSampai;
+  });
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
 
@@ -2898,8 +2905,22 @@ function RiwayatPembayaran({ headers }) {
         placeholder="Cari nama santri / jenis tagihan..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", width: "100%", marginBottom: 12, fontSize: 14, boxSizing: "border-box" }}
+        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", width: "100%", marginBottom: 10, fontSize: 14, boxSizing: "border-box" }}
       />
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ fontSize: 13, color: "#64748b" }}>📅 Dari:</div>
+        <input type="date" value={tanggalDari} onChange={e => setTanggalDari(e.target.value)}
+          style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }} />
+        <div style={{ fontSize: 13, color: "#64748b" }}>s/d</div>
+        <input type="date" value={tanggalSampai} onChange={e => setTanggalSampai(e.target.value)}
+          style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }} />
+        {(tanggalDari || tanggalSampai) && (
+          <button onClick={() => { setTanggalDari(""); setTanggalSampai(""); }}
+            style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>
+            ✕ Reset
+          </button>
+        )}
+      </div>
       <div style={{ background: "#e8f5e9", borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
         💰 Total Terbayar: {formatRupiah(totalBayar)} — {filtered.length} transaksi
       </div>
