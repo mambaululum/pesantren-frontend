@@ -349,7 +349,11 @@ function Dashboard({ user, onLogout }) {
 
   const filtered = tagihan.filter(t => activeTab === "semua" ? true : t.status === activeTab);
 
-  const handleLogout = () => { localStorage.removeItem("token"); onLogout(); };
+  const handleLogout = () => {
+    if (!confirm("Yakin ingin keluar dari akun?")) return;
+    localStorage.removeItem("token");
+    onLogout();
+  };
 
   return (
     <div style={styles.dashBg}>
