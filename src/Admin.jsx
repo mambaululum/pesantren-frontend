@@ -139,6 +139,20 @@ const handleTouchEnd = (e) => {
     onLogout();
   };
 
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      if (confirm("Yakin ingin keluar dari akun admin?")) {
+        localStorage.removeItem("adminToken");
+        onLogout();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const totalTagihan = santri.reduce((a, b) => a + Number(b.total_tagihan || 0), 0);
   const totalTerbayar = santri.reduce((a, b) => a + Number(b.sudah_bayar || 0), 0);
   const totalTunggakan = totalTagihan - totalTerbayar;
