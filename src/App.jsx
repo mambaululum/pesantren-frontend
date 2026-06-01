@@ -355,6 +355,20 @@ function Dashboard({ user, onLogout }) {
     onLogout();
   };
 
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      if (confirm("Yakin ingin keluar dari akun?")) {
+        localStorage.removeItem("token");
+        onLogout();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   return (
     <div style={styles.dashBg}>
       {/* HEADER */}
