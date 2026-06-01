@@ -133,7 +133,11 @@ const handleTouchEnd = (e) => {
 
   useEffect(() => { loadSantri(); }, []);
 
-  const handleLogout = () => { localStorage.removeItem("adminToken"); onLogout(); };
+  const handleLogout = () => {
+    if (!confirm("Yakin ingin keluar dari akun admin?")) return;
+    localStorage.removeItem("adminToken");
+    onLogout();
+  };
 
   const totalTagihan = santri.reduce((a, b) => a + Number(b.total_tagihan || 0), 0);
   const totalTerbayar = santri.reduce((a, b) => a + Number(b.sudah_bayar || 0), 0);
