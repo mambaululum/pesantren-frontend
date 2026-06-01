@@ -1486,7 +1486,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
   const [searchRekap, setSearchRekap] = useState("");
   const [filterRekap, setFilterRekap] = useState("semua"); // "semua"|"lunas"|"belum"
   const [filterJenis, setFilterJenis] = useState(""); // "" = semua jenis
-  const [viewMode, setViewMode] = useState("per_santri"); // "per_santri" | "per_jenis"
+  const [viewMode, setViewMode] = useState("per_jenis"); // "per_santri" | "per_jenis"
 
   const refreshSemesters = async () => {
     setLoadingSemester(true);
@@ -2180,8 +2180,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
           <div style={{ background: "white", borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {/* Toggle view mode */}
             <div style={{ display: "flex", gap: 4, marginBottom: 4, width: "100%" }}>
-              <button onClick={() => setViewMode("per_santri")} style={{ padding: "7px 14px", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontWeight: viewMode === "per_santri" ? 700 : 400, background: viewMode === "per_santri" ? "#3b82f6" : "#f1f5f9", color: viewMode === "per_santri" ? "white" : "#64748b" }}>👤 Per Santri</button>
-              <button onClick={() => setViewMode("per_jenis")} style={{ padding: "7px 14px", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontWeight: viewMode === "per_jenis" ? 700 : 400, background: viewMode === "per_jenis" ? "#7c3aed" : "#f1f5f9", color: viewMode === "per_jenis" ? "white" : "#64748b" }}>🏷️ Per Jenis Tagihan</button>
+              <button onClick={() => setViewMode("per_jenis")} style={{ padding: "7px 14px", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontWeight: 700, background: "#7c3aed", color: "white" }}>🏷️ Per Jenis Tagihan</button>
             </div>
             {viewMode === "per_santri" && (
               <>
