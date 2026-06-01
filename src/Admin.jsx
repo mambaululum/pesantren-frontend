@@ -779,7 +779,9 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setFormBulk({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
       setKeteranganBulk("");
       setShowKonfirmasiBulk(false);
-      loadTagihan(selectedUser.id);
+      // Optimistic: hapus tagihan yang lunas dari state lokal
+      const lunasIds = selectedTagihanBulk.map(t => t.id);
+      setTagihan(prev => prev.filter(t => !lunasIds.includes(t.id)));
       setSelectedTagihan(null);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
     setLoading(false);
@@ -868,12 +870,23 @@ function InputCicilan({ santri: santriRaw, headers }) {
       } else {
         setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
       }
+
+      const newCicilan = { id: res.data.id || Date.now(), jumlah_bayar: jumlahBayar, tanggal_bayar: form.tanggal_bayar, keterangan };
+      const isLunas = res.data.lunas || kelebihan > 0;
+
       setForm({ jumlah_bayar: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
       setShowKonfirmasiLebih(false);
       setPendingBayar(null);
-      loadTagihan(selectedUser.id);
-      loadRiwayat(selectedTagihan.id);
-      if (res.data.lunas || kelebihan > 0) setSelectedTagihan(null);
+
+      if (isLunas) {
+        // Hapus dari daftar tagihan (optimistic)
+        setTagihan(prev => prev.filter(t => t.id !== tagihanSnapshot.id));
+        setSelectedTagihan(null);
+        setRiwayatBayar([]);
+      } else {
+        // Tambah cicilan ke riwayat lokal (optimistic)
+        setRiwayatBayar(prev => [...prev, newCicilan]);
+      }
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 5000);
@@ -901,8 +914,8 @@ function InputCicilan({ santri: santriRaw, headers }) {
       await axios.put(`${API}/pembayaran/${cicilanId}`, { ...editForm, jumlah_bayar: Number(editForm.jumlah_bayar) }, { headers });
       setMsg("✅ Cicilan berhasil diupdate!");
       setEditCicilan(null);
-      loadTagihan(selectedUser.id);
-      loadRiwayat(selectedTagihan.id);
+      // Optimistic: update riwayat lokal
+      setRiwayatBayar(prev => prev.map(r => r.id === cicilanId ? { ...r, ...editForm, jumlah_bayar: Number(editForm.jumlah_bayar) } : r));
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal mengupdate cicilan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 4000);
@@ -915,8 +928,8 @@ function InputCicilan({ santri: santriRaw, headers }) {
     try {
       await axios.delete(`${API}/pembayaran/${cicilanId}`, { headers });
       setMsg("✅ Cicilan berhasil dihapus!");
-      loadTagihan(selectedUser.id);
-      loadRiwayat(selectedTagihan.id);
+      // Optimistic: hapus dari riwayat lokal
+      setRiwayatBayar(prev => prev.filter(r => r.id !== cicilanId));
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menghapus cicilan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 4000);
@@ -1032,7 +1045,14 @@ function InputCicilan({ santri: santriRaw, headers }) {
                       {isSelected ? "☑️" : "⬜"}
                     </span>
                   )}
-                  <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t.jenis}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t.jenis}</div>
+                    {t.semester && (
+                      <div style={{ fontSize: 11, color: "#6366f1", marginTop: 2, fontWeight: 500 }}>
+                        📅 {t.semester}
+                      </div>
+                    )}
+                  </div>
                   <span style={{ color: "#dc2626", fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
                 </div>
               );
@@ -1137,7 +1157,10 @@ function InputCicilan({ santri: santriRaw, headers }) {
         <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           {/* INFO TAGIHAN */}
           <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>{selectedTagihan.jenis}</div>
+            <div style={{ fontWeight: 700, marginBottom: 2 }}>{selectedTagihan.jenis}</div>
+            {selectedTagihan.semester && (
+              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, marginBottom: 6 }}>📅 Semester: {selectedTagihan.semester}</div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
               <span>Total Tagihan: <b>{formatRupiah(selectedTagihan.jumlah)}</b></span>
               <span>Sudah Bayar: <b style={{ color: "#059669" }}>{formatRupiah(totalSudahBayar)}</b></span>
