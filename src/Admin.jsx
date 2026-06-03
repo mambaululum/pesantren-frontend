@@ -3093,7 +3093,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
 // ============================================================
 // INPUT PEMBAYARAN UMUM (Non-Tagihan)
 // ============================================================
-function InputPembayaranUmum({ headers }) {
+function InputPembayaranUmum({ headers, santri }) {
   const [form, setForm] = useState({
     nama_pembayar: "",
     keperluan: "",
@@ -3101,7 +3101,11 @@ function InputPembayaranUmum({ headers }) {
     tanggal: new Date().toISOString().split("T")[0],
     keterangan: "",
     kategori: "umum",
+    no_hp: "",
+    kirim_notif: true,
   });
+  const [searchSantri, setSearchSantri] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [riwayat, setRiwayat] = useState([]);
@@ -3133,7 +3137,7 @@ function InputPembayaranUmum({ headers }) {
     }
     setLoading(true); setMsg("");
     try {
-      await axios.post(`${API}/pembayaran-umum`, form, { headers });
+      await axios.post(`${API}/pembayaran-umum`, { ...form, kirim_notif: form.kirim_notif }, { headers });
       setMsg("✅ Pembayaran berhasil dicatat!");
       setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: new Date().toISOString().split("T")[0], keterangan: "", kategori: "umum" });
       loadRiwayat();
@@ -3175,9 +3179,29 @@ function InputPembayaranUmum({ headers }) {
               {kategoriList.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
             </select>
           </div>
-          <div>
-            <label style={lStyle}>Nama Pembayar *</label>
-            <input style={iStyle} placeholder="contoh: Ahmad / Kelas 3" value={form.nama_pembayar} onChange={e => setForm({ ...form, nama_pembayar: e.target.value })} />
+          <div style={{ position: "relative" }}>
+            <label style={lStyle}>Nama Pembayar * (pilih dari santri)</label>
+            <input style={iStyle} placeholder="Cari nama santri..." value={searchSantri}
+              onChange={e => { setSearchSantri(e.target.value); setShowDropdown(true); setForm({ ...form, nama_pembayar: e.target.value, no_hp: "" }); }}
+              onFocus={() => setShowDropdown(true)} />
+            {showDropdown && searchSantri && (
+              <div style={{ position: "absolute", zIndex: 100, background: "white", border: "1px solid #e5e7eb", borderRadius: 8, width: "100%", maxHeight: 180, overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                {(santri || []).filter(s => s.nama_siswa.toLowerCase().includes(searchSantri.toLowerCase())).length === 0
+                  ? <div style={{ padding: "10px 14px", fontSize: 13, color: "#94a3b8" }}>Tidak ditemukan</div>
+                  : (santri || []).filter(s => s.nama_siswa.toLowerCase().includes(searchSantri.toLowerCase())).map(s => (
+                    <div key={s.id} onClick={() => { setForm({ ...form, nama_pembayar: s.nama_siswa, no_hp: s.no_hp || "" }); setSearchSantri(s.nama_siswa); setShowDropdown(false); }}
+                      style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}
+                      onMouseOver={e => e.currentTarget.style.background = "#f0fdf4"}
+                      onMouseOut={e => e.currentTarget.style.background = "white"}>
+                      <div style={{ fontWeight: 600 }}>{s.nama_siswa}</div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>{s.kelas} · {s.no_hp ? `📱 ${s.no_hp}` : "⚠️ Tidak ada WA"}</div>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+            {form.no_hp && <div style={{ fontSize: 11, color: "#059669", marginTop: 4 }}>📱 {form.no_hp}</div>}
+            {form.nama_pembayar && !form.no_hp && <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 4 }}>⚠️ Santri ini tidak punya nomor WA</div>}
           </div>
           <div>
             <label style={lStyle}>Keperluan / Jenis Pembayaran *</label>
@@ -3194,6 +3218,17 @@ function InputPembayaranUmum({ headers }) {
           <div style={{ gridColumn: "1/-1" }}>
             <label style={lStyle}>Keterangan (opsional)</label>
             <input style={iStyle} placeholder="Catatan tambahan..." value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} />
+          </div>
+        </div>
+        <div style={{ marginTop: 12, padding: "10px 14px", background: form.kirim_notif ? "#f0fdf4" : "#f8fafc", borderRadius: 10, border: `1px solid ${form.kirim_notif ? "#a7f3d0" : "#e5e7eb"}` }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, color: form.kirim_notif ? "#065f46" : "#64748b" }}>
+            <input type="checkbox" checked={form.kirim_notif} onChange={e => setForm({ ...form, kirim_notif: e.target.checked })} style={{ width: 18, height: 18, cursor: "pointer" }} />
+            📲 Kirim notifikasi WhatsApp ke pembayar
+          </label>
+          <div style={{ fontSize: 12, marginTop: 4, marginLeft: 28, color: form.kirim_notif ? "#059669" : "#94a3b8" }}>
+            {form.kirim_notif
+              ? form.no_hp ? `✅ Akan dikirim ke ${form.no_hp}` : "⚠️ Santri tidak punya nomor WA, notif tidak akan terkirim"
+              : "❌ Notifikasi tidak akan dikirim"}
           </div>
         </div>
         <button style={{ ...btnGreen, width: "100%", marginTop: 14, padding: 13, fontSize: 15, opacity: loading ? 0.7 : 1 }} onClick={handleSubmit} disabled={loading}>
