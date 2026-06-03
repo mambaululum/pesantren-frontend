@@ -3308,18 +3308,6 @@ function RiwayatPembayaran({ headers }) {
     } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
   };
 
-  const handleHapusTerpilih = async () => {
-    if (dipilih.length === 0) return;
-    if (!confirm(`Hapus ${dipilih.length} data pembayaran yang dipilih? Tindakan tidak bisa dibatalkan!`)) return;
-    try {
-      await Promise.all(dipilih.map(id => axios.delete(`${API}/pembayaran/${id}`, { headers })));
-      RiwayatPembayaran._cache = null;
-      setData(prev => prev.filter(r => !dipilih.includes(r.id)));
-      setDipilih([]);
-      setModeHapus(false);
-    } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
-  };
-
   const handleHapus = async (id) => {
     if (!confirm("Hapus data pembayaran ini? Tindakan tidak bisa dibatalkan!")) return;
     try {
