@@ -92,7 +92,7 @@ function AdminDashboard({ admin, onLogout }) {
   const [menu, setMenu] = useState("rekap");
   const menuRef = useRef(null);
   const touchStartX = useRef(null);
-  const allMenuKeys = ["rekap","santri","tagihan","cicilan","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
+  const allMenuKeys = ["rekap","santri","tagihan","cicilan","bayar_umum","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
 
   const handleTouchStart = (e) => {
   touchStartX.current = e.touches[0].clientX;
@@ -170,6 +170,7 @@ const handleTouchEnd = (e) => {
     { key: "tambah_santri", label: "➕ Tambah Santri" },
     { key: "semester", label: "📅 Semester" },
     { key: "pengingat", label: "🔔 Pengingat" },
+    { key: "bayar_umum", label: "💳 Bayar Umum" },
     { key: "riwayat_bayar", label: "📜 Riwayat Bayar" },
     { key: "riwayat_notif", label: "📨 Riwayat Notif WA" },
     { key: "pengumuman", label: "📣 Pengumuman" },
@@ -3088,6 +3089,158 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
 }
 
 // ============================================================
+// INPUT PEMBAYARAN UMUM (Non-Tagihan)
+// ============================================================
+function InputPembayaranUmum({ headers }) {
+  const [form, setForm] = useState({
+    nama_pembayar: "",
+    keperluan: "",
+    jumlah: "",
+    tanggal: new Date().toISOString().split("T")[0],
+    keterangan: "",
+    kategori: "umum",
+  });
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [riwayat, setRiwayat] = useState([]);
+  const [loadingRiwayat, setLoadingRiwayat] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const kategoriList = [
+    { value: "umum", label: "💳 Umum" },
+    { value: "jajan", label: "🍜 Uang Jajan / Nitip" },
+    { value: "infaq", label: "🕌 Infaq / Sedekah" },
+    { value: "kegiatan", label: "🎒 Kegiatan" },
+    { value: "lainnya", label: "📦 Lainnya" },
+  ];
+
+  const loadRiwayat = async () => {
+    setLoadingRiwayat(true);
+    try {
+      const res = await axios.get(`${API}/pembayaran-umum`, { headers });
+      setRiwayat(Array.isArray(res.data) ? res.data : []);
+    } catch (e) { console.error(e); }
+    setLoadingRiwayat(false);
+  };
+
+  useEffect(() => { loadRiwayat(); }, []);
+
+  const handleSubmit = async () => {
+    if (!form.nama_pembayar || !form.keperluan || !form.jumlah) {
+      setMsg("❌ Nama, keperluan, dan jumlah wajib diisi!"); return;
+    }
+    setLoading(true); setMsg("");
+    try {
+      await axios.post(`${API}/pembayaran-umum`, form, { headers });
+      setMsg("✅ Pembayaran berhasil dicatat!");
+      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: new Date().toISOString().split("T")[0], keterangan: "", kategori: "umum" });
+      loadRiwayat();
+    } catch (e) {
+      setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan"));
+    }
+    setLoading(false);
+    setTimeout(() => setMsg(""), 4000);
+  };
+
+  const handleHapus = async (id) => {
+    if (!confirm("Hapus data ini?")) return;
+    try {
+      await axios.delete(`${API}/pembayaran-umum/${id}`, { headers });
+      setRiwayat(prev => prev.filter(r => r.id !== id));
+    } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
+  };
+
+  const filtered = riwayat.filter(r =>
+    (r.nama_pembayar || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.keperluan || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.kategori || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalFiltered = filtered.reduce((s, r) => s + Number(r.jumlah || 0), 0);
+
+  return (
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>💳 Input Pembayaran Umum</div>
+      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+
+      {/* FORM INPUT */}
+      <div style={{ background: "white", borderRadius: 14, padding: 20, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontWeight: 700, marginBottom: 14 }}>✍️ Catat Pembayaran Baru</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <div>
+            <label style={lStyle}>Kategori</label>
+            <select style={iStyle} value={form.kategori} onChange={e => setForm({ ...form, kategori: e.target.value })}>
+              {kategoriList.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lStyle}>Nama Pembayar *</label>
+            <input style={iStyle} placeholder="contoh: Ahmad / Kelas 3" value={form.nama_pembayar} onChange={e => setForm({ ...form, nama_pembayar: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Keperluan / Jenis Pembayaran *</label>
+            <input style={iStyle} placeholder="contoh: Uang Jajan Minggu Ini" value={form.keperluan} onChange={e => setForm({ ...form, keperluan: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Jumlah (Rp) *</label>
+            <input style={iStyle} type="number" placeholder="contoh: 50000" value={form.jumlah} onChange={e => setForm({ ...form, jumlah: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Tanggal</label>
+            <input style={iStyle} type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+          </div>
+          <div style={{ gridColumn: "1/-1" }}>
+            <label style={lStyle}>Keterangan (opsional)</label>
+            <input style={iStyle} placeholder="Catatan tambahan..." value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} />
+          </div>
+        </div>
+        <button style={{ ...btnGreen, width: "100%", marginTop: 14, padding: 13, fontSize: 15, opacity: loading ? 0.7 : 1 }} onClick={handleSubmit} disabled={loading}>
+          {loading ? "⏳ Menyimpan..." : "💾 Simpan Pembayaran"}
+        </button>
+      </div>
+
+      {/* RIWAYAT */}
+      <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700 }}>📋 Riwayat Pembayaran Umum</div>
+          <button onClick={loadRiwayat} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🔄 Refresh</button>
+        </div>
+        <input placeholder="Cari nama / keperluan / kategori..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 12px", fontSize: 13, boxSizing: "border-box", marginBottom: 10 }} />
+        <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontWeight: 600, fontSize: 13 }}>
+          💰 Total: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalFiltered)} — {filtered.length} transaksi
+        </div>
+        {loadingRiwayat ? <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Memuat...</div> : filtered.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Belum ada data</div>
+        ) : filtered.map((r, i) => (
+          <div key={r.id} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{r.nama_pembayar}</span>
+                <span style={{ background: "#f1f5f9", borderRadius: 6, padding: "2px 8px", fontSize: 11, color: "#475569" }}>
+                  {kategoriList.find(k => k.value === r.kategori)?.label || r.kategori}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>{r.keperluan}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                {r.tanggal ? new Date(r.tanggal).toLocaleDateString("id-ID") : "-"}
+                {r.keterangan ? ` · ${r.keterangan}` : ""}
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, color: "#059669", fontSize: 14 }}>
+                {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(r.jumlah)}
+              </span>
+              <button onClick={() => handleHapus(r.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: "5px 10px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑️</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // STYLES
 // ============================================================
 const iStyle = { width: "100%", border: "2px solid #e5e7eb", borderRadius: 8, padding: "12px 12px", fontSize: 16, outline: "none", boxSizing: "border-box" };
@@ -3136,24 +3289,51 @@ function RiwayatPembayaran({ headers }) {
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
 
+  const handleHapus = async (id) => {
+    if (!confirm("Hapus data pembayaran ini? Tindakan tidak bisa dibatalkan!")) return;
+    try {
+      await axios.delete(`${API}/pembayaran/${id}`, { headers });
+      RiwayatPembayaran._cache = null;
+      setData(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      alert("Gagal hapus: " + (e.response?.data?.message || e.message));
+    }
+  };
+
+  const handleHapusSemua = async () => {
+    if (!confirm(`Hapus SEMUA ${filtered.length} data pembayaran yang tampil? Tindakan ini tidak bisa dibatalkan!`)) return;
+    try {
+      await axios.delete(`${API}/pembayaran/hapus-semua`, { headers });
+      RiwayatPembayaran._cache = null;
+      setData([]);
+    } catch (e) {
+      alert("Gagal hapus: " + (e.response?.data?.message || e.message));
+    }
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
   <h2 style={{ fontSize: 18, fontWeight: 700 }}>📜 Riwayat Pembayaran</h2>
-  <button onClick={() => {
-    RiwayatPembayaran._cache = null;
-    setLoading(true);
-    axios.get(`${API}/riwayat-pembayaran`, { headers })
-      .then(r => {
-        const result = Array.isArray(r.data) ? r.data : [];
-        RiwayatPembayaran._cache = result;
-        setData(result);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-    🔄 Refresh
-  </button>
+  <div style={{ display: "flex", gap: 8 }}>
+    <button onClick={() => {
+      RiwayatPembayaran._cache = null;
+      setLoading(true);
+      axios.get(`${API}/riwayat-pembayaran`, { headers })
+        .then(r => {
+          const result = Array.isArray(r.data) ? r.data : [];
+          RiwayatPembayaran._cache = result;
+          setData(result);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+      🔄 Refresh
+    </button>
+    <button onClick={handleHapusSemua} style={{ background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+      🗑️ Hapus Semua
+    </button>
+  </div>
 </div>
       <input
         placeholder="Cari nama santri / jenis tagihan..."
@@ -3200,6 +3380,9 @@ function RiwayatPembayaran({ headers }) {
                     {formatRupiah(r.total_tagihan)}
                   </td>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{r.keterangan || "-"}</td>
+                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                    <button onClick={() => handleHapus(r.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑️</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
