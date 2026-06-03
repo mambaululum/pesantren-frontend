@@ -3308,10 +3308,6 @@ function RiwayatPembayaran({ headers }) {
     } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
   };
 
-  const togglePilih = (id) => setDipilih(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const pilihSemua = () => setDipilih(filtered.map(r => r.id));
-  const batalPilih = () => { setDipilih([]); setModeHapus(false); };
-
   const handleHapusTerpilih = async () => {
     if (dipilih.length === 0) return;
     if (!confirm(`Hapus ${dipilih.length} data pembayaran yang dipilih? Tindakan tidak bisa dibatalkan!`)) return;
