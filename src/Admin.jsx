@@ -64,21 +64,8 @@ function AdminLogin({ onLogin }) {
           </div>
         </div>
         {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 14 }}>{error}</div>}
-        <button style={{ width: "100%", background: "linear-gradient(135deg, #065f46, #059669)", color: "white", border: "none", borderRadius: 10, padding: 14, fontSize: 16, fontWeight: 600, cursor: "pointer" }} onClick={handleLogin} disabled={loading}>
-          {loading ? (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-      <div style={{
-        width: 14, height: 14, borderRadius: "50%",
-        border: "2px solid rgba(255,255,255,0.25)",
-        borderTop: "2px solid white",
-        animation: "spin 0.8s linear infinite"
-      }} />
-      Memuat...
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      `}} />
-    </div>
-  ) : "Masuk sebagai Admin"}
+        <button style={{ width: "100%", background: "linear-gradient(135deg, #065f46, #059669)", color: "white", border: "none", borderRadius: 10, padding: 14, fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={handleLogin} disabled={loading}>
+          {loading ? <><Spinner />Memuat...</> : "Masuk sebagai Admin"}
         </button>
       </div>
     </div>
@@ -178,6 +165,7 @@ const handleTouchEnd = (e) => {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui,sans-serif" }}>
+      <LoadingBar loading={loading} />
       <header style={{ background: "linear-gradient(135deg, #064e3b, #065f46)", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
@@ -1139,7 +1127,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
                       onClick={handleSimpanBulk}
                       disabled={loading}
                     >
-                      {loading ? "Menyimpan..." : kirimWABulk ? "✅ Konfirmasi & Kirim WA" : "✅ Konfirmasi"}
+                      {loading ? <><Spinner />Menyimpan...</> : kirimWABulk ? "✅ Konfirmasi & Kirim WA" : "✅ Konfirmasi"}
                     </button>
                     <button
                       style={{ ...btnGray, padding: "12px 16px" }}
@@ -1331,13 +1319,13 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
                   {/* Tombol aksi */}
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      style={{ ...btnGreen, flex: 1, padding: 12, fontSize: 14 }}
-                      onClick={() => handleSimpanBayar(pendingBayar.jumlahInput, pendingBayar.jumlahBayar, pendingBayar.kelebihan, keteranganLebih, kirimWALebih)}
-                      disabled={loading}
-                    >
-                      {loading ? "Menyimpan..." : `💾 Konfirmasi & Simpan`}
-                    </button>
+                   <button
+          style={{ ...btnGreen, flex: 1, padding: 12, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          onClick={() => handleSimpanBayar(pendingBayar.jumlahInput, pendingBayar.jumlahBayar, pendingBayar.kelebihan, keteranganLebih, kirimWALebih)}
+          disabled={loading}
+        >
+          {loading ? <><Spinner />Menyimpan...</> : `💾 Konfirmasi & Simpan`}
+        </button>
                     <button style={{ ...btnGray, padding: "12px 16px" }} onClick={() => setShowKonfirmasiLebih(false)} disabled={loading}>
                       Batal
                     </button>
@@ -1823,9 +1811,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
           </div>
 
           <button style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 15 }} onClick={handleTambahMassal} disabled={massalLoading}>
-            {massalLoading
-              ? `⏳ Menyimpan...`
-              : `💾 Tambah Tagihan ke ${massalSantri.length} Santri${massalForm.kirim_notif ? " + Kirim WA" : " (Tanpa WA)"}`}
+            {massalLoading ? <><Spinner />Menyimpan...</> : `💾 Tambah Tagihan ke ${massalSantri.length} Santri${massalForm.kirim_notif ? " + Kirim WA" : " (Tanpa WA)"}`}
           </button>
         </div>
       )}
@@ -2432,8 +2418,8 @@ function TambahSantri({ headers, onRefresh }) {
         <div style={{ marginTop: 16, padding: 14, background: "#f0fdf4", borderRadius: 10, fontSize: 13, color: "#065f46" }}>
           💡 Setelah santri ditambahkan, masuk ke menu <b>Tagihan</b> untuk menambahkan tagihan santri ini.
         </div>
-        <button style={{ ...btnGreen, marginTop: 16, width: "100%", padding: 14, fontSize: 15 }} onClick={handleSubmit} disabled={loading}>
-          {loading ? "Menyimpan..." : "✅ Tambah Santri & Buat Akun"}
+        <button style={{ ...btnGreen, marginTop: 16, width: "100%", padding: 14, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={handleSubmit} disabled={loading}>
+          {loading ? <><Spinner />Menyimpan...</> : "✅ Tambah Santri & Buat Akun"}
         </button>
       </div>
     </div>
@@ -2523,8 +2509,8 @@ function Pengingat({ santri, headers }) {
           Akan dikirim ke <b>{santriTunggakan.length}</b> wali yang punya nomor WA dan masih ada tunggakan.
           {santriTanpaWA.length > 0 && <span style={{ color: "#f59e0b" }}> ({santriTanpaWA.length} wali belum punya no WA)</span>}
         </div>
-        <button style={{ ...btnGreen, padding: "10px 20px", fontSize: 14, opacity: loading ? 0.7 : 1 }} onClick={handleKirimSemua} disabled={loading || santriTunggakan.length === 0}>
-          {loading ? "⏳ Mengirim..." : `📲 Kirim Pengingat ke ${santriTunggakan.length} Wali`}
+        <button style={{ ...btnGreen, padding: "10px 20px", fontSize: 14, display: "flex", alignItems: "center", gap: 8 }} onClick={handleKirimSemua} disabled={loading || santriTunggakan.length === 0}>
+          {loading ? <><Spinner />Mengirim...</> : `📲 Kirim Pengingat ke ${santriTunggakan.length} Wali`}
         </button>
       </div>
 
@@ -2554,13 +2540,13 @@ function Pengingat({ santri, headers }) {
                     </div>
                     <div style={{ fontSize: 13, color: "#dc2626", fontWeight: 700, marginTop: 2 }}>Tunggakan: {formatRupiah(sisa)}</div>
                   </div>
-                  <button
-                    style={{ ...btnGreen, padding: "7px 14px", fontSize: 12, opacity: (!s.no_hp || loadingId === s.id) ? 0.5 : 1 }}
-                    onClick={() => handleKirimSatu(s)}
-                    disabled={!s.no_hp || loadingId === s.id}
-                  >
-                    {loadingId === s.id ? "⏳" : "📲 Kirim"}
-                  </button>
+                 <button
+          style={{ ...btnGreen, padding: "7px 14px", fontSize: 12, display: "flex", alignItems: "center", gap: 6, opacity: (!s.no_hp || loadingId === s.id) ? 0.5 : 1 }}
+          onClick={() => handleKirimSatu(s)}
+          disabled={!s.no_hp || loadingId === s.id}
+        >
+          {loadingId === s.id ? <><Spinner size={13} />Kirim...</> : "📲 Kirim"}
+        </button>
                 </div>
               );
             })
@@ -3231,8 +3217,8 @@ function InputPembayaranUmum({ headers, santri }) {
               : "❌ Notifikasi tidak akan dikirim"}
           </div>
         </div>
-        <button style={{ ...btnGreen, width: "100%", marginTop: 14, padding: 13, fontSize: 15, opacity: loading ? 0.7 : 1 }} onClick={handleSubmit} disabled={loading}>
-          {loading ? "⏳ Menyimpan..." : "💾 Simpan Pembayaran"}
+        <button style={{ ...btnGreen, width: "100%", marginTop: 14, padding: 13, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={handleSubmit} disabled={loading}>
+          {loading ? <><Spinner />Menyimpan...</> : "💾 Simpan Pembayaran"}
         </button>
       </div>
 
@@ -3274,6 +3260,59 @@ function InputPembayaranUmum({ headers, santri }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// LOADING BAR & SPINNER
+// ============================================================
+function LoadingBar({ loading }) {
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      setVisible(true);
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress(p => {
+          if (p >= 85) { clearInterval(interval); return 85; }
+          return p + Math.random() * 15;
+        });
+      }, 200);
+    } else {
+      setProgress(100);
+      const t = setTimeout(() => { setVisible(false); setProgress(0); }, 400);
+      return () => clearTimeout(t);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100%", zIndex: 9999, height: 3 }}>
+      <div style={{
+        height: "100%", background: "linear-gradient(90deg, #059669, #34d399)",
+        width: `${progress}%`, transition: progress === 100 ? "width 0.3s ease" : "width 0.2s ease",
+        boxShadow: "0 0 8px #059669"
+      }} />
+    </div>
+  );
+}
+
+function Spinner({ size = 16, color = "white" }) {
+  return (
+    <>
+      <div style={{
+        width: size, height: size, borderRadius: "50%",
+        border: `2px solid rgba(255,255,255,0.25)`,
+        borderTop: `2px solid ${color}`,
+        animation: "spin 0.7s linear infinite",
+        flexShrink: 0
+      }} />
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}` }} />
+    </>
   );
 }
 
@@ -3795,7 +3834,7 @@ function Pengumuman({ santri, headers }) {
           onClick={handleKirim}
           disabled={loading}
         >
-          {loading ? "⏳ Mengirim..." : `📲 Kirim Pengumuman ke ${form.target === "semua" ? santriDenganWA.length : selectedSantri.length} Wali`}
+          {loading ? <><Spinner />Mengirim...</> : `📲 Kirim Pengumuman ke ${form.target === "semua" ? santriDenganWA.length : selectedSantri.length} Wali`}
         </button>
       </div>
 
