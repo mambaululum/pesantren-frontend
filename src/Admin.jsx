@@ -235,7 +235,8 @@ const handleTouchEnd = (e) => {
         {menu === "tambah_santri" && <TambahSantri headers={headers} onRefresh={() => { loadSantri(); setMenu("santri"); }} />}
         {menu === "pengingat" && <Pengingat santri={santri} headers={headers} />}
         {menu === "semester" && <ManajemenSemester santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
-        {menu === "riwayat_bayar" && <RiwayatPembayaran headers={headers} />}
+        {menu === "bayar_umum" && <InputPembayaranUmum headers={headers} />}
+{menu === "riwayat_bayar" && <RiwayatPembayaran headers={headers} />}
         {menu === "riwayat_notif" && <RiwayatNotif headers={headers} />}
         {menu === "pengumuman" && <Pengumuman santri={santri} headers={headers} />}
       </div>
