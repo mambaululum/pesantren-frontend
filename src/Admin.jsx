@@ -3259,6 +3259,8 @@ function RiwayatPembayaran({ headers }) {
   const [search, setSearch] = useState("");
   const [tanggalDari, setTanggalDari] = useState("");
   const [tanggalSampai, setTanggalSampai] = useState("");
+  const [modeHapus, setModeHapus] = useState(false);
+  const [dipilih, setDipilih] = useState([]);
 
   useEffect(() => {
     // Pakai cache kalau data sudah ada
@@ -3290,6 +3292,38 @@ function RiwayatPembayaran({ headers }) {
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
 
+  const togglePilih = (id) => setDipilih(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const pilihSemua = () => setDipilih(filtered.map(r => r.id));
+  const batalPilih = () => { setDipilih([]); setModeHapus(false); };
+
+  const handleHapusTerpilih = async () => {
+    if (dipilih.length === 0) return;
+    if (!confirm(`Hapus ${dipilih.length} data pembayaran yang dipilih? Tindakan tidak bisa dibatalkan!`)) return;
+    try {
+      await Promise.all(dipilih.map(id => axios.delete(`${API}/pembayaran/${id}`, { headers })));
+      RiwayatPembayaran._cache = null;
+      setData(prev => prev.filter(r => !dipilih.includes(r.id)));
+      setDipilih([]);
+      setModeHapus(false);
+    } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
+  };
+
+  const togglePilih = (id) => setDipilih(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const pilihSemua = () => setDipilih(filtered.map(r => r.id));
+  const batalPilih = () => { setDipilih([]); setModeHapus(false); };
+
+  const handleHapusTerpilih = async () => {
+    if (dipilih.length === 0) return;
+    if (!confirm(`Hapus ${dipilih.length} data pembayaran yang dipilih? Tindakan tidak bisa dibatalkan!`)) return;
+    try {
+      await Promise.all(dipilih.map(id => axios.delete(`${API}/pembayaran/${id}`, { headers })));
+      RiwayatPembayaran._cache = null;
+      setData(prev => prev.filter(r => !dipilih.includes(r.id)));
+      setDipilih([]);
+      setModeHapus(false);
+    } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
+  };
+
   const handleHapus = async (id) => {
     if (!confirm("Hapus data pembayaran ini? Tindakan tidak bisa dibatalkan!")) return;
     try {
@@ -3317,6 +3351,7 @@ function RiwayatPembayaran({ headers }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
   <h2 style={{ fontSize: 18, fontWeight: 700 }}>📜 Riwayat Pembayaran</h2>
   <div style={{ display: "flex", gap: 8 }}>
+  <div style={{ display: "flex", gap: 8 }}>
     <button onClick={() => {
       RiwayatPembayaran._cache = null;
       setLoading(true);
@@ -3331,6 +3366,11 @@ function RiwayatPembayaran({ headers }) {
     }} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
       🔄 Refresh
     </button>
+    <button onClick={() => { setModeHapus(!modeHapus); setDipilih([]); }}
+      style={{ background: modeHapus ? "#6b7280" : "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+      {modeHapus ? "❌ Batal" : "🗑️ Hapus Pilihan"}
+    </button>
+  </div>
     <button onClick={handleHapusSemua} style={{ background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
       🗑️ Hapus Semua
     </button>
@@ -3359,6 +3399,17 @@ function RiwayatPembayaran({ headers }) {
       <div style={{ background: "#e8f5e9", borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
         💰 Total Terbayar: {formatRupiah(totalBayar)} — {filtered.length} transaksi
       </div>
+      {modeHapus && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>🗑️ Mode Hapus — {dipilih.length} dipilih</span>
+          <button onClick={pilihSemua} style={{ background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>☑️ Pilih Semua</button>
+          <button onClick={batalPilih} style={{ background: "#f1f5f9", border: "1px solid #e5e7eb", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#64748b", cursor: "pointer", fontWeight: 600 }}>☐ Batal Semua</button>
+          <button onClick={handleHapusTerpilih} disabled={dipilih.length === 0}
+            style={{ background: dipilih.length === 0 ? "#e5e7eb" : "#ef4444", color: dipilih.length === 0 ? "#94a3b8" : "white", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: dipilih.length === 0 ? "not-allowed" : "pointer" }}>
+            🗑️ Hapus {dipilih.length} Data
+          </button>
+        </div>
+      )}
       {loading ? <p>Memuat data...</p> : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
@@ -3367,7 +3418,13 @@ function RiwayatPembayaran({ headers }) {
                 <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
               )}
               {filtered.map((r, i) => (
-                <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                <tr key={r.id} onClick={() => modeHapus && togglePilih(r.id)}
+                  style={{ background: modeHapus && dipilih.includes(r.id) ? "#fef2f2" : i % 2 === 0 ? "#fff" : "#f8fafc", cursor: modeHapus ? "pointer" : "default" }}>
+                  {modeHapus && (
+                    <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                      <input type="checkbox" checked={dipilih.includes(r.id)} onChange={() => togglePilih(r.id)} style={{ width: 15, height: 15, accentColor: "#ef4444" }} />
+                    </td>
+                  )}
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
                     {r.tanggal_bayar ? new Date(r.tanggal_bayar).toLocaleDateString("id-ID") : "-"}
                   </td>
