@@ -827,6 +827,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
         jumlah_bayar: jumlahBayar,
         tanggal_bayar: form.tanggal_bayar,
         keterangan: keterangan,
+        kirim_notif: kirimWA,
       }, { headers });
 
       // Simpan data tagihan sebelum di-null
