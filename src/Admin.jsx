@@ -100,8 +100,34 @@ const handleTouchEnd = (e) => {
 };
   const [santri, setSantri] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modeTes, setModeTes] = useState(false);
+  const [nomorTes, setNomorTes] = useState('');
+  const [showModeTes, setShowModeTes] = useState(false);
+  const [inputNomorTes, setInputNomorTes] = useState('');
+  const [loadingModeTes, setLoadingModeTes] = useState(false);
   const token = localStorage.getItem("adminToken");
   const headers = { Authorization: `Bearer ${token}` };
+
+  const loadModeTes = async () => {
+    try {
+      const res = await axios.get(`${API}/mode-tes`, { headers });
+      setModeTes(res.data.aktif);
+      setNomorTes(res.data.nomor_tes || '');
+      setInputNomorTes(res.data.nomor_tes || '');
+    } catch (e) { console.error(e); }
+  };
+
+  const simpanModeTes = async (aktif) => {
+    if (aktif && !inputNomorTes) { alert('Isi nomor tes dulu!'); return; }
+    setLoadingModeTes(true);
+    try {
+      const res = await axios.post(`${API}/mode-tes`, { aktif, nomor_tes: inputNomorTes }, { headers });
+      setModeTes(res.data.aktif);
+      setNomorTes(res.data.nomor_tes || '');
+      if (!aktif) setShowModeTes(false);
+    } catch (e) { alert('Gagal mengubah mode tes'); }
+    setLoadingModeTes(false);
+  };
 
   const loadSantri = async (force = false) => {
     if (AdminDashboard._cache && !force) {
@@ -118,7 +144,7 @@ const handleTouchEnd = (e) => {
     setLoading(false);
   };
 
-  useEffect(() => { loadSantri(); }, []);
+  useEffect(() => { loadSantri(); loadModeTes(); }, []);
 
   const handleLogout = () => {
     if (!confirm("Yakin ingin keluar dari akun admin?")) return;
@@ -176,8 +202,53 @@ const handleTouchEnd = (e) => {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: "white", fontSize: 12 }}>👤 {admin.nama}</span>
+          <button
+            onClick={() => setShowModeTes(true)}
+            style={{ background: modeTes ? "#dc2626" : "rgba(255,255,255,0.2)", border: modeTes ? "2px solid #fca5a5" : "none", borderRadius: 8, padding: "8px 14px", color: "white", cursor: "pointer", fontSize: 13, minHeight: 40, fontWeight: modeTes ? 700 : 400 }}
+          >
+            {modeTes ? "🧪 Mode Tes ON" : "🧪 Mode Tes"}
+          </button>
           <button style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "8px 14px", color: "white", cursor: "pointer", fontSize: 13, minHeight: 40 }} onClick={handleLogout}>Keluar</button>
         </div>
+
+      {/* Modal Mode Tes */}
+      {showModeTes && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🧪 Mode Tes WA</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Kalau aktif, semua notif WA diarahkan ke nomor tes saja — tidak ke wali santri.</div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Nomor Tes (format: 08xx / 628xx)</label>
+              <input
+                type="tel"
+                placeholder="cth: 081234567890"
+                value={inputNomorTes}
+                onChange={e => setInputNomorTes(e.target.value)}
+                style={{ width: "100%", border: "1px solid #d1d5db", borderRadius: 8, padding: "10px 12px", fontSize: 14, boxSizing: "border-box" }}
+              />
+            </div>
+            {modeTes && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#dc2626", marginBottom: 12 }}>
+                ⚠️ Mode tes sedang AKTIF — semua WA ke: <strong>{nomorTes}</strong>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              {modeTes ? (
+                <button onClick={() => simpanModeTes(false)} disabled={loadingModeTes} style={{ flex: 1, background: "#dc2626", color: "white", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                  {loadingModeTes ? "Memproses..." : "Matikan Mode Tes"}
+                </button>
+              ) : (
+                <button onClick={() => simpanModeTes(true)} disabled={loadingModeTes} style={{ flex: 1, background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                  {loadingModeTes ? "Memproses..." : "Aktifkan Mode Tes"}
+                </button>
+              )}
+              <button onClick={() => setShowModeTes(false)} style={{ flex: 1, background: "#f1f5f9", color: "#374151", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </header>
 
      <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "0 8px", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }} ref={menuRef}
@@ -1398,8 +1469,20 @@ function DataSantri({ santri, headers, onRefresh }) {
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>👥 Data Santri ({santri.length})</div>
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
       <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        {santri.map(s => (
-          <div key={s.id} style={{ padding: "14px 20px", borderBottom: "1px solid #f8fafc" }}>
+      {Object.entries(
+        santri.reduce((acc, s) => {
+          const k = s.kelas || 'Tanpa Kelas';
+          if (!acc[k]) acc[k] = [];
+          acc[k].push(s);
+          return acc;
+        }, {})
+      ).sort(([a], [b]) => a.localeCompare(b, 'id')).map(([kelas, list]) => (
+        <div key={kelas}>
+          <div style={{ padding: "8px 20px", background: "#f1f5f9", fontWeight: 700, fontSize: 13, color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+            🏫 Kelas {kelas} ({list.length} santri)
+          </div>
+          {list.map(s => (
+            <div key={s.id} style={{ padding: "14px 20px", borderBottom: "1px solid #f8fafc" }}>
             {editSantri === s.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
@@ -1444,7 +1527,9 @@ function DataSantri({ santri, headers, onRefresh }) {
               </div>
             )}
           </div>
-        ))}
+          ))}
+        </div>
+      ))}
       </div>
     </div>
   );
