@@ -756,8 +756,8 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 function InputCicilan({ santri: santriRaw, headers }) {
   // Urutkan santri berdasarkan angka di depan kelas (1-6), lalu nama
   const santri = [...santriRaw].sort((a, b) => {
-    const numA = parseInt(a.kelas) || 99;
-    const numB = parseInt(b.kelas) || 99;
+    const numA = parseInt((a.kelas || '').replace(/\D/g, '')) || 99;
+    const numB = parseInt((b.kelas || '').replace(/\D/g, '')) || 99;
     if (numA !== numB) return numA - numB;
     return a.nama_siswa.localeCompare(b.nama_siswa, "id");
   });
@@ -1541,8 +1541,8 @@ function DataSantri({ santri, headers, onRefresh }) {
 function DataTagihan({ santri: santriRaw, headers, onRefreshSantri }) {
   // Urutkan santri berdasarkan angka di depan kelas (1-6), lalu nama
   const santri = [...santriRaw].sort((a, b) => {
-    const numA = parseInt(a.kelas) || 99;
-    const numB = parseInt(b.kelas) || 99;
+    const numA = parseInt((a.kelas || '').replace(/\D/g, '')) || 99;
+    const numB = parseInt((b.kelas || '').replace(/\D/g, '')) || 99;
     if (numA !== numB) return numA - numB;
     return a.nama_siswa.localeCompare(b.nama_siswa, "id");
   });
