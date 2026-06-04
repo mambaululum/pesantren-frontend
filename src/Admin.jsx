@@ -2,6 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 
 const API = "https://pesantren-backend.vercel.app/api/admin";
+
+const LoadingBarData = () => (
+  <div style={{ padding: "40px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "white", width: "100%", boxSizing: "border-box" }}>
+    <div style={{ width: "60%", height: 10, background: "#e5e7eb", borderRadius: 99, overflow: "hidden" }}>
+      <div style={{ height: "100%", width: "40%", background: "#059669", borderRadius: 99, animation: "loadbar 1.2s ease-in-out infinite" }} />
+    </div>
+    <div style={{ color: "#94a3b8", fontSize: 13, letterSpacing: 2 }}>MEMUAT DATA...</div>
+    <style>{`@keyframes loadbar { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }`}</style>
+  </div>
+);
 const formatRupiah = (n) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 const toBase64 = (url) => new Promise((resolve) => {
   const img = new Image();
@@ -518,7 +528,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
             </div>
             <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, fontSize: 13, background: "#f8fafc" }}>👥 Daftar Semua Santri</div>
-              {loading ? <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>Memuat data...</div> : (
+              {loading ? <LoadingBarData /> : (
                 <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 520 }}>
                   <thead>
@@ -2175,7 +2185,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
               )}
 
               {/* DAFTAR TAGIHAN per semester */}
-              {loading ? <div style={{ padding: 30, textAlign: "center" }}>Memuat...</div> :
+              {loading ? <LoadingBarData /> :
                 Object.entries(tagihanBySemester).map(([semKey, items]) => (
                   <div key={semKey} style={{ marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -2309,7 +2319,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
           </div>
 
           {loadingRekap ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>⏳ Memuat data rekap...</div>
+            <LoadingBarData />
           ) : viewMode === "per_jenis" ? (
             /* ── VIEW PER JENIS TAGIHAN ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -2892,7 +2902,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
         )}
 
         {loading ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>Memuat...</div>
+          <LoadingBarData />
         ) : semesters.length === 0 ? (
           <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Belum ada semester. Tambahkan semester terlebih dahulu.</div>
         ) : (
@@ -3318,7 +3328,7 @@ function InputPembayaranUmum({ headers, santri }) {
         <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontWeight: 600, fontSize: 13 }}>
           💰 Total: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalFiltered)} — {filtered.length} transaksi
         </div>
-        {loadingRiwayat ? <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Memuat...</div> : filtered.length === 0 ? (
+        {loadingRiwayat ? <LoadingBarData /> : filtered.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Belum ada data</div>
         ) : filtered.map((r, i) => (
           <div key={r.id} style={{ padding: "12px 0", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -3554,7 +3564,7 @@ function RiwayatPembayaran({ headers }) {
           </button>
         </div>
       )}
-      {loading ? <p>Memuat data...</p> : (
+      {loading ? <LoadingBarData /> : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <tbody>
@@ -3685,7 +3695,7 @@ function RiwayatNotif({ headers }) {
           📊 Total: {filtered.length}
         </div>
       </div>
-      {loading ? <p>Memuat data...</p> : (
+      {loading ? <LoadingBarData /> : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <thead>
