@@ -89,25 +89,26 @@ function AdminDashboard({ admin, onLogout }) {
   const [menu, setMenu] = useState("rekap");
   const menuRef = useRef(null);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const allMenuKeys = ["rekap","santri","tagihan","cicilan","bayar_umum","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
 
   const handleTouchStart = (e) => {
-  touchStartX.current = e.touches[0].clientX;
-  touchStartX.startY = e.touches[0].clientY;
-};
-const handleTouchEnd = (e) => {
-  if (touchStartX.current === null) return;
-  const diffX = touchStartX.current - e.changedTouches[0].clientX;
-  const diffY = touchStartX.startY - e.changedTouches[0].clientY;
-  // Abaikan kalau gerakan vertikal lebih besar dari horizontal
-  if (Math.abs(diffY) > Math.abs(diffX) * 0.5) return;
-  // Minimal swipe 120px — lebih besar agar tidak mudah terpicu
-  if (Math.abs(diffX) < 120) return;
-  const idx = allMenuKeys.indexOf(menu);
-  if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
-  else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
-  touchStartX.current = null;
-};
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current - e.changedTouches[0].clientY;
+    // Abaikan kalau gerakan vertikal lebih besar dari horizontal
+    if (Math.abs(diffY) > Math.abs(diffX) * 0.5) return;
+    // Minimal swipe 120px — lebih besar agar tidak mudah terpicu
+    if (Math.abs(diffX) < 120) return;
+    const idx = allMenuKeys.indexOf(menu);
+    if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
+    else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
+    touchStartX.current = null;
+  };
   const [santri, setSantri] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modeTes, setModeTes] = useState(false);
@@ -271,21 +272,13 @@ const handleTouchEnd = (e) => {
           </button>
         ))}
       </div>
-      {/* Area swipe khusus */}
-<div
-  onTouchStart={handleTouchStart}
-  onTouchEnd={handleTouchEnd}
-  style={{ height: 6, background: "transparent" }}
-/>
-{/* Area swipe khusus */}
-<div
-  onTouchStart={handleTouchStart}
-  onTouchEnd={handleTouchEnd}
-  style={{ height: 6, background: "transparent" }}
-/>
-<div 
-  style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}
->
+      {/* Area swipe */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ height: 6, background: "transparent" }}
+      />
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}>
         {menu === "rekap" && (
           <RekapKeuangan
             santri={santri}
@@ -811,7 +804,6 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
 
   const handleSelectTagihan = (t) => {
-    console.log('selectedTagihan data:', JSON.stringify(t));
     setSelectedTagihan(t);
     setEditCicilan(null);
     loadRiwayat(t.id);
@@ -902,7 +894,6 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
       // Simpan data tagihan sebelum di-null
       const tagihanSnapshot = { ...selectedTagihan };
-      console.log('tagihanSnapshot:', JSON.stringify(tagihanSnapshot));
 
       // Kirim WA jika ada kelebihan dan admin pilih kirim
       if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
@@ -918,7 +909,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             keterangan,
             user_id: selectedUser.id,
           }, { headers });
-        } catch (e) { console.log("WA kelebihan gagal:", e.message); }
+        } catch (e) { /* WA kelebihan gagal, lanjut */ }
       }
 
       if (kelebihan > 0) {
@@ -937,7 +928,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             keterangan: keterangan || "",
             user_id: selectedUser.id,
           }, { headers });
-        } catch (e) { console.log("WA konfirmasi gagal:", e.message); }
+        } catch (e) { /* WA konfirmasi gagal, lanjut */ }
         setMsg("✅ " + res.data.message + " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit.");
       } else {
         setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
@@ -1700,8 +1691,10 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
   const handleDelete = async (id) => {
     if (!confirm("Hapus tagihan ini? Semua cicilan ikut terhapus!")) return;
-    await axios.delete(`${API}/tagihan/${id}`, { headers });
-    setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); setTimeout(() => setMsg(""), 3000);
+    try {
+      await axios.delete(`${API}/tagihan/${id}`, { headers });
+      setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); setTimeout(() => setMsg(""), 3000);
+    } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menghapus tagihan")); }
   };
 
   // ── Rekap handlers ────────────────────────────────────────
@@ -2036,7 +2029,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                           try {
                             const res = await axios.get(`${API}/tagihan/${s.id}`, { headers });
                             setTagihanReferensi(res.data);
-                          } catch(e) { setTagihanReferensi([]); }
+                          } catch { setTagihanReferensi([]); }
                         }}
                         style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #f8fafc", background: copyReferensi?.id === s.id ? "#f5f3ff" : "white", borderLeft: copyReferensi?.id === s.id ? "3px solid #7c3aed" : "3px solid transparent", display: "flex", justifyContent: "space-between" }}
                       >
@@ -2100,7 +2093,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                               kirim_notif: false,
                             }, { headers });
                             berhasil++;
-                          } catch(e) {}
+                          } catch {}
                         }
                         setMsg(`✅ ${berhasil} tagihan berhasil di-copy ke ${selectedUser.nama_siswa}!`);
                         setLoadingCopy(false);
@@ -2168,7 +2161,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                           if (!confirm(`Hapus ${selectedTagihanHapus.length} tagihan? Semua cicilan ikut terhapus!`)) return;
                           let berhasil = 0;
                           for (const id of selectedTagihanHapus) {
-                            try { await axios.delete(`${API}/tagihan/${id}`, { headers }); berhasil++; } catch(e) {}
+                            try { await axios.delete(`${API}/tagihan/${id}`, { headers }); berhasil++; } catch {}
                           }
                           setMsg(`✅ ${berhasil} tagihan berhasil dihapus!`);
                           setSelectedTagihanHapus([]);
@@ -3822,7 +3815,7 @@ function Pengumuman({ santri, headers }) {
       }, { headers });
 
       setMsg("✅ " + res.data.message);
-      setForm({ judul: "", pesan: "", target: "semua" });
+      setForm({ judul: "", pesan: "", target: "semua", kirim_grup: false, grup_id: "" });
       setFile(null);
       setSelectedSantri([]);
       loadRiwayat();
