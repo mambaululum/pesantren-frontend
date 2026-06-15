@@ -419,7 +419,7 @@ const handleKlikNotif = async (n) => {
                     <Row label="Jenis" value={detail.data_json.jenis} />
                   )}
                   {detail.data_json.jumlah && (
-                    <Row label="Jumlah Tagihan" value={`Rp ${Number(detail.data_json.jumlah).toLocaleString('id-ID')}`} />
+                    <Row label="Total Tagihan" value={`Rp ${Number(detail.data_json.jumlah).toLocaleString('id-ID')}`} />
                   )}
                   {detail.data_json.jumlah_bayar && (
                     <Row label="Dibayar" value={`Rp ${Number(detail.data_json.jumlah_bayar).toLocaleString('id-ID')}`} color="#059669" />
@@ -428,7 +428,7 @@ const handleKlikNotif = async (n) => {
                     <Row label="Sisa" value={`Rp ${Number(detail.data_json.sisa).toLocaleString('id-ID')}`} color="#dc2626" />
                   )}
                   {detail.data_json.sisa === 0 && detail.data_json.jumlah_bayar && (
-                    <Row label="Status" value="✅ LUNAS" color="#059669" />
+                    <Row label="Status" value="✅ Lunas" color="#059669" />
                   )}
                   {detail.data_json.tanggal_bayar && (
                     <Row label="Tanggal" value={formatTanggal(detail.data_json.tanggal_bayar)} />
@@ -436,12 +436,12 @@ const handleKlikNotif = async (n) => {
 
                   {/* Khusus bulk: tampilkan list lunas */}
                   {detail.data_json.lunasList && detail.data_json.lunasList.map((t, i) => (
-                    <Row key={i} label={t.jenis} value={`Rp ${Number(t.dibayar).toLocaleString('id-ID')} ✅`} color="#059669" />
+                    <Row key={i} label={t.jenis} value={`Rp ${Number(t.dibayar).toLocaleString('id-ID')} ✅ (Total: Rp ${Number(t.jumlah).toLocaleString('id-ID')})`} color="#059669" />
                   ))}
                   {detail.data_json.cicilanItem && (
                     <Row
                       label={`${detail.data_json.cicilanItem.jenis} (cicilan)`}
-                      value={`Dibayar Rp ${Number(detail.data_json.cicilanItem.dibayar).toLocaleString('id-ID')} — Sisa Rp ${Number(detail.data_json.cicilanItem.sisa).toLocaleString('id-ID')}`}
+                      value={`Dibayar Rp ${Number(detail.data_json.cicilanItem.dibayar).toLocaleString('id-ID')} — Sisa Rp ${Number(detail.data_json.cicilanItem.sisa).toLocaleString('id-ID')} (Total: Rp ${Number(detail.data_json.cicilanItem.jumlah).toLocaleString('id-ID')})`}
                       color="#d97706"
                     />
                   )}
