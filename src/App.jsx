@@ -482,8 +482,8 @@ const handleKlikNotif = async (n) => {
               <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
                 Belum ada notifikasi
               </div>
-            ) : notifs.map(n => (
-              <div key={n.id} onClick={() => tandaiBaca(n.id)} style={{
+           ) : notifs.map(n => (
+  <div key={n.id} onClick={() => handleKlikNotif(n)} style={{
                 padding: '12px 16px', borderBottom: '1px solid #f8fafc',
                 background: n.sudah_dibaca ? 'white' : '#eff6ff',
                 cursor: 'pointer', transition: 'background 0.2s'
