@@ -380,10 +380,10 @@ function NotifikasiPanel({ token }) {
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', top: 44, right: 0, width: 320,
-          background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
-          zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+       <div style={{
+        position: 'fixed', top: 64, right: 8, left: 8,
+        background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+        zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
         }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
