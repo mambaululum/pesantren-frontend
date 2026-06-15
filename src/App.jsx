@@ -319,7 +319,7 @@ function NotifikasiPanel({ token }) {
 
   const fetchNotifs = async () => {
     try {
-      const res = await axios.get(`${API}/notifikasi`, {
+      const res = await axios.get(`${API}/admin/notifikasi`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const baru = res.data;
@@ -347,14 +347,14 @@ function NotifikasiPanel({ token }) {
   const belumBaca = notifs.filter(n => !n.sudah_dibaca).length;
 
   const tandaiBaca = async (id) => {
-    await axios.patch(`${API}/notifikasi/${id}/baca`, {}, {
+    await axios.patch(`${API}/admin/notifikasi/${id}/baca`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, sudah_dibaca: true } : n));
   };
 
   const bacaSemua = async () => {
-    await axios.patch(`${API}/notifikasi/baca-semua`, {}, {
+    await axios.patch(`${API}/admin/notifikasi/baca-semua`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setNotifs(prev => prev.map(n => ({ ...n, sudah_dibaca: true })));
@@ -440,12 +440,12 @@ function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("semua");
   const [copied, setCopied] = useState("");
 
-  // Gunakan useState dengan callback untuk fetch data saat mount
-  useState(() => {
+  // Gunakan useEffect dengan callback untuk fetch data saat mount
+  useEffect(() => {
     const token = localStorage.getItem("token");
     axios.get(`${API}/tagihan`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => { setTagihan(res.data); setLoading(false); })
-      .catch(() => setLoading(false));
+    .then(res => { setTagihan(res.data); setLoading(false); })
+    .catch(() => setLoading(false));
   }, []);
 
   // ── Kalkulasi ringkasan ──
