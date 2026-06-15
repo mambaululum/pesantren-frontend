@@ -316,7 +316,7 @@ function InfoPembayaran({ copied, setCopied }) {
 function NotifikasiPanel({ token }) {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
-
+  const [detail, setDetail] = useState(null);
   const fetchNotifs = async () => {
     try {
       const res = await axios.get(`${API}/admin/notifikasi`, {
@@ -352,6 +352,10 @@ function NotifikasiPanel({ token }) {
     });
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, sudah_dibaca: true } : n));
   };
+const handleKlikNotif = async (n) => {
+    await tandaiBaca(n.id);
+    setDetail(n); // buka modal detail
+  };
 
   const bacaSemua = async () => {
     await axios.patch(`${API}/admin/notifikasi/baca-semua`, {}, {
@@ -378,6 +382,83 @@ function NotifikasiPanel({ token }) {
           }}>{belumBaca}</span>
         )}
       </button>
+ {detail && (
+        <div onClick={() => setDetail(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 16, padding: 24,
+            width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{detail.judul}</div>
+              <button onClick={() => setDetail(null)} style={{
+                background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8'
+              }}>✕</button>
+            </div>
+
+            {/* Pesan */}
+            <div style={{
+              background: '#f8fafc', borderRadius: 10, padding: '12px 14px',
+              fontSize: 13, color: '#475569', lineHeight: 1.6, marginBottom: 16
+            }}>
+              {detail.pesan}
+            </div>
+
+            {/* Detail dari data_json */}
+            {detail.data_json && (
+              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: '#94a3b8', marginBottom: 10, letterSpacing: 0.5 }}>
+                  RINCIAN
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                  {detail.data_json.jenis && (
+                    <Row label="Jenis" value={detail.data_json.jenis} />
+                  )}
+                  {detail.data_json.jumlah && (
+                    <Row label="Jumlah Tagihan" value={`Rp ${Number(detail.data_json.jumlah).toLocaleString('id-ID')}`} />
+                  )}
+                  {detail.data_json.jumlah_bayar && (
+                    <Row label="Dibayar" value={`Rp ${Number(detail.data_json.jumlah_bayar).toLocaleString('id-ID')}`} color="#059669" />
+                  )}
+                  {detail.data_json.sisa > 0 && (
+                    <Row label="Sisa" value={`Rp ${Number(detail.data_json.sisa).toLocaleString('id-ID')}`} color="#dc2626" />
+                  )}
+                  {detail.data_json.sisa === 0 && detail.data_json.jumlah_bayar && (
+                    <Row label="Status" value="✅ LUNAS" color="#059669" />
+                  )}
+                  {detail.data_json.tanggal_bayar && (
+                    <Row label="Tanggal" value={formatTanggal(detail.data_json.tanggal_bayar)} />
+                  )}
+
+                  {/* Khusus bulk: tampilkan list lunas */}
+                  {detail.data_json.lunasList && detail.data_json.lunasList.map((t, i) => (
+                    <Row key={i} label={t.jenis} value={`Rp ${Number(t.dibayar).toLocaleString('id-ID')} ✅`} color="#059669" />
+                  ))}
+                  {detail.data_json.cicilanItem && (
+                    <Row
+                      label={`${detail.data_json.cicilanItem.jenis} (cicilan)`}
+                      value={`Dibayar Rp ${Number(detail.data_json.cicilanItem.dibayar).toLocaleString('id-ID')} — Sisa Rp ${Number(detail.data_json.cicilanItem.sisa).toLocaleString('id-ID')}`}
+                      color="#d97706"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Waktu */}
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 16, textAlign: 'right' }}>
+              {new Date(detail.created_at).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && (
        <div style={{
@@ -428,6 +509,14 @@ function NotifikasiPanel({ token }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+function Row({ label, value, color }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+      <span style={{ color: '#64748b' }}>{label}</span>
+      <span style={{ fontWeight: 600, color: color || '#0f172a' }}>{value}</span>
     </div>
   );
 }
