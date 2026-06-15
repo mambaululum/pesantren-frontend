@@ -313,7 +313,124 @@ function InfoPembayaran({ copied, setCopied }) {
     </div>
   );
 }
+function NotifikasiPanel({ token }) {
+  const [notifs, setNotifs] = useState([]);
+  const [open, setOpen] = useState(false);
 
+  const fetchNotifs = async () => {
+    try {
+      const res = await axios.get(`${API}/notifikasi`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const baru = res.data;
+      // Tampilkan push notification HP jika ada yang baru
+      const idLama = new Set(notifs.map(n => n.id));
+      baru.filter(n => !n.sudah_dibaca && !idLama.has(n.id)).forEach(n => {
+        if (Notification.permission === 'granted') {
+          new Notification(n.judul, {
+            body: n.pesan,
+            icon: '/Mu.png',
+            badge: '/Mu.png'
+          });
+        }
+      });
+      setNotifs(baru);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const belumBaca = notifs.filter(n => !n.sudah_dibaca).length;
+
+  const tandaiBaca = async (id) => {
+    await axios.patch(`${API}/notifikasi/${id}/baca`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, sudah_dibaca: true } : n));
+  };
+
+  const bacaSemua = async () => {
+    await axios.patch(`${API}/notifikasi/baca-semua`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setNotifs(prev => prev.map(n => ({ ...n, sudah_dibaca: true })));
+  };
+
+  const warnaBadge = { tagihan: '#dc2626', bayar: '#059669', koreksi: '#d97706', info: '#1e40af' };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(!open)} style={{
+        background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8,
+        padding: '6px 10px', cursor: 'pointer', position: 'relative', color: 'white', fontSize: 18
+      }}>
+        🔔
+        {belumBaca > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            background: '#ef4444', color: 'white',
+            borderRadius: 999, fontSize: 10, fontWeight: 700,
+            padding: '1px 5px', minWidth: 16, textAlign: 'center'
+          }}>{belumBaca}</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 44, right: 0, width: 320,
+          background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+          zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+        }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>🔔 Notifikasi</div>
+            {belumBaca > 0 && (
+              <button onClick={bacaSemua} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 12, color: '#1e40af', fontWeight: 600
+              }}>Tandai semua dibaca</button>
+            )}
+          </div>
+
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {notifs.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                Belum ada notifikasi
+              </div>
+            ) : notifs.map(n => (
+              <div key={n.id} onClick={() => tandaiBaca(n.id)} style={{
+                padding: '12px 16px', borderBottom: '1px solid #f8fafc',
+                background: n.sudah_dibaca ? 'white' : '#eff6ff',
+                cursor: 'pointer', transition: 'background 0.2s'
+              }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
+                    background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 2 }}>{n.judul}</div>
+                    <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{n.pesan}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                      {new Date(n.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 // ============================================================
 // DASHBOARD WALI SANTRI
 // ============================================================
@@ -347,7 +464,15 @@ function Dashboard({ user, onLogout }) {
   const kekurangan = totalTagihan - sudahBayar;
   const persen = totalTagihan > 0 ? Math.round((sudahBayar / totalTagihan) * 100) : 0;
 
-  const filtered = tagihan.filter(t => activeTab === "semua" ? true : t.status === activeTab);
+  const filtered = tagihan
+    .filter(t => activeTab === "semua" ? true : t.status === activeTab)
+    .slice()
+    .sort((a, b) => {
+      if (!a.tanggal_bayar && !b.tanggal_bayar) return 0;
+      if (!a.tanggal_bayar) return -1;
+      if (!b.tanggal_bayar) return 1;
+      return new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
+    });
 
   const handleLogout = () => {
     if (!confirm("Yakin ingin keluar dari akun?")) return;
@@ -382,6 +507,7 @@ function Dashboard({ user, onLogout }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ color: "white", fontSize: 13 }}>👤 {user.nama}</span>
+          <NotifikasiPanel token={localStorage.getItem("token")} />
           <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
         </div>
       </header>
@@ -689,6 +815,9 @@ export default function App() {
   const handleLogin = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   };
 
   const handleLogout = () => {
