@@ -347,14 +347,37 @@ function NotifikasiPanel({ token }) {
     } catch {}
   };
 
-  useEffect(() => {
-    fetchNotifs();
+ useEffect(() => {
+  fetchNotifs();
 
-    const userId = getUserId();
-    if (!userId) return;
+  // ✅ Auto subscribe push setiap buka app (tidak perlu login ulang)
+  const subscribePush = async () => {
+    if (!('serviceWorker' in navigator)) return;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    if (Notification.permission !== 'granted') return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+      });
+      await axios.post(`${API}/admin/push-subscribe`, { subscription }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (e) {
+      console.log('Push subscribe error:', e);
+    }
+  };
+  subscribePush();
 
-    const channel = supabase
-      .channel('notifikasi-' + userId)
+  const userId = getUserId();
+  if (!userId) return;
+
+  const channel = supabase
+    .channel('notifikasi-' + userId)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
