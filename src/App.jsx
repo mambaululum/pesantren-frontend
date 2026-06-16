@@ -910,13 +910,34 @@ export default function App() {
 
   if (isAdmin) return <Admin />;
 
-  const handleLogin = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+ const handleLogin = async (userData) => {
+  localStorage.setItem("user", JSON.stringify(userData));
+  setUser(userData);
+
+  // Minta izin notifikasi
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+
+  // Subscribe Web Push
+  if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+      });
+
+      // Kirim subscription ke backend
+      await axios.post(`${API}/admin/push-subscribe`, { subscription }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+    } catch (e) {
+      console.log('Push subscribe error:', e);
     }
-  };
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem("token");
