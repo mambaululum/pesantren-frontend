@@ -1,3 +1,4 @@
+```javascript
 const CACHE_NAME = 'mambaul-ulum-v1';
 const urlsToCache = ['/'];
 
@@ -35,3 +36,4 @@ self.addEventListener('notificationclick', e => {
     })
   );
 });
+```
