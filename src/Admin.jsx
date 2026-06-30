@@ -1219,15 +1219,30 @@ function InputCicilan({ santri: santriRaw, headers }) {
       {selectedTagihan && (
         <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           {/* INFO TAGIHAN */}
-          <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, marginBottom: 2 }}>{selectedTagihan.jenis}</div>
-            {selectedTagihan.semester && (
-              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, marginBottom: 6 }}>📅 Semester: {selectedTagihan.semester}</div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
-              <span>Total Tagihan: <b>{formatRupiah(selectedTagihan.jumlah)}</b></span>
-              <span>Sudah Bayar: <b style={{ color: "#059669" }}>{formatRupiah(totalSudahBayar)}</b></span>
-              <span>Sisa: <b style={{ color: "#dc2626" }}>{formatRupiah(sisaTagihan)}</b></span>
+          <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14, border: "1.5px solid #fde68a" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#92400e" }}>📋 {selectedTagihan.jenis}</div>
+                {selectedTagihan.semester && (
+                  <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, marginTop: 2 }}>📅 Semester: {selectedTagihan.semester}</div>
+                )}
+              </div>
+              <button
+                onClick={() => { setSelectedTagihan(null); setRiwayatBayar([]); setForm(f => ({ ...f, jumlah_bayar: "" })); setShowKonfirmasiLebih(false); }}
+                style={{ fontSize: 11, padding: "4px 10px", borderRadius: 7, border: "1.5px solid #f59e0b", background: "white", color: "#b45309", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+              >🔄 Ganti Tagihan</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginTop: 8 }}>
+              {[
+                { label: "Total Tagihan", val: formatRupiah(selectedTagihan.jumlah), color: "#1e40af", bg: "#eff6ff" },
+                { label: "Sudah Bayar", val: formatRupiah(totalSudahBayar), color: "#059669", bg: "#ecfdf5" },
+                { label: "Sisa Tagihan", val: formatRupiah(sisaTagihan), color: "#dc2626", bg: "#fef2f2" },
+              ].map((c, i) => (
+                <div key={i} style={{ background: c.bg, borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#64748b", marginBottom: 2 }}>{c.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.color }}>{c.val}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1287,16 +1302,60 @@ function InputCicilan({ santri: santriRaw, headers }) {
             <>
               <label style={lStyle}>3. Input Pembayaran Sekarang</label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 8 }}>
-                <div>
-                  <label style={lStyle}>Jumlah Cicilan (Rp)</label>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lStyle}>Jumlah Bayar (Rp)</label>
                   <input
-                    style={{ ...iStyle, borderColor: Number(form.jumlah_bayar) > sisaTagihan ? "#f59e0b" : undefined }}
+                    style={{ ...iStyle, borderColor: Number(form.jumlah_bayar) > sisaTagihan ? "#f59e0b" : undefined, fontSize: 16, fontWeight: 600 }}
                     type="number"
-                    placeholder={`Sisa: ${sisaTagihan.toLocaleString("id-ID")}`}
+                    placeholder={`Sisa tagihan: ${sisaTagihan.toLocaleString("id-ID")}`}
                     value={form.jumlah_bayar}
                     onChange={e => { setForm({ ...form, jumlah_bayar: e.target.value }); setShowKonfirmasiLebih(false); }}
                     disabled={showKonfirmasiLebih}
                   />
+                  {/* Tombol Nominal Cepat */}
+                  {!showKonfirmasiLebih && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 5 }}>⚡ Nominal cepat:</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[100000, 250000, 500000, 1000000, 2000000].map(nominal => (
+                          <button
+                            key={nominal}
+                            type="button"
+                            onClick={() => { setForm(f => ({ ...f, jumlah_bayar: String(nominal) })); setShowKonfirmasiLebih(false); }}
+                            style={{
+                              padding: "6px 12px", borderRadius: 8,
+                              border: `2px solid ${Number(form.jumlah_bayar) === nominal ? "#059669" : "#e5e7eb"}`,
+                              background: Number(form.jumlah_bayar) === nominal ? "#f0fdf4" : "white",
+                              color: Number(form.jumlah_bayar) === nominal ? "#059669" : "#374151",
+                              fontWeight: 600, fontSize: 12, cursor: "pointer"
+                            }}
+                          >
+                            {nominal >= 1000000 ? `${nominal/1000000}jt` : `${nominal/1000}rb`}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => { setForm(f => ({ ...f, jumlah_bayar: String(sisaTagihan) })); setShowKonfirmasiLebih(false); }}
+                          style={{
+                            padding: "6px 12px", borderRadius: 8,
+                            border: `2px solid ${Number(form.jumlah_bayar) === sisaTagihan ? "#059669" : "#6366f1"}`,
+                            background: Number(form.jumlah_bayar) === sisaTagihan ? "#f0fdf4" : "#eef2ff",
+                            color: Number(form.jumlah_bayar) === sisaTagihan ? "#059669" : "#6366f1",
+                            fontWeight: 700, fontSize: 12, cursor: "pointer"
+                          }}
+                        >
+                          ✓ Lunas ({formatRupiah(sisaTagihan)})
+                        </button>
+                        {form.jumlah_bayar && (
+                          <button
+                            type="button"
+                            onClick={() => { setForm(f => ({ ...f, jumlah_bayar: "" })); setShowKonfirmasiLebih(false); }}
+                            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+                          >✕</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={lStyle}>Titipan Uang Jajan (Rp)</label>
@@ -3705,7 +3764,12 @@ function RiwayatNotif({ headers }) {
               {filtered.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap", fontSize: 12 }}>
-                    {r.created_at ? new Date(r.created_at).toLocaleString("id-ID") : "-"}
+                    {r.created_at ? (() => {
+                      const d = new Date(r.created_at);
+                      const tgl = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+                      const jam = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
+                      return <><div>{tgl}</div><div style={{ color: "#6366f1", fontWeight: 600 }}>🕐 {jam} WIB</div></>;
+                    })() : "-"}
                   </td>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
                     <div style={{ fontWeight: 600 }}>{r.nama_siswa}</div>
