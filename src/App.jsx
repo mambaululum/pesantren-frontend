@@ -1,9 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Admin from "./Admin";
-
-const API = "http://localhost:5000/api";
-
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered'))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+const API = "https://pesantren-backend.vercel.app/api";
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
 const formatRupiah = (n) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
@@ -13,7 +24,53 @@ const formatTanggal = (d) => {
   const bulan = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
   return `${dt.getDate()} ${bulan[dt.getMonth()]} ${dt.getFullYear()}`;
 };
+function InstallButton() {
+  const [bisa, setBisa] = useState(false);
+  const [installed, setInstalled] = useState(false);
 
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      setBisa(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+    if (deferredPrompt) setBisa(true);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  if (installed) return (
+    <div style={{ textAlign: "center", fontSize: 13, color: "#059669", marginTop: 10 }}>
+      ✅ Aplikasi berhasil diinstall!
+    </div>
+  );
+
+  // Selalu tampil — panduan manual jika tidak support
+  return (
+    <div style={{ marginTop: 10 }}>
+      {bisa ? (
+        <button onClick={() => deferredPrompt?.prompt()} style={{
+          width: "100%",
+          background: "linear-gradient(135deg, #059669, #047857)",
+          color: "white", border: "none", borderRadius: 10, padding: 12,
+          fontSize: 14, fontWeight: 600, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+        }}>
+          📲 Klik Install Aplikasi
+        </button>
+      ) : (
+        <div style={{
+          background: "#f0fdf4", border: "1px solid #bbf7d0",
+          borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#166534"
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>klik install aplikasi</div>
+          <div>Buka di <b>Chrome Android</b>, lalu ketuk menu <b>⋮</b> → <b>"Tambahkan ke layar utama"</b></div>
+        </div>
+      )}
+    </div>
+  );
+}
 // ============================================================
 // LOGIN PAGE
 // ============================================================
@@ -23,6 +80,24 @@ function LoginPage({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    });
+    window.addEventListener("appinstalled", () => setInstalled(true));
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setInstallPrompt(null);
+  };
 
   const handleLogin = async () => {
     if (!username || !password) { setError("Username dan password wajib diisi."); return; }
@@ -41,14 +116,13 @@ function LoginPage({ onLogin }) {
     <div style={styles.loginBg}>
       <div style={styles.loginCard}>
         <div style={styles.loginLogo}>
-          <img src="/Mu.jpg" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} alt="logo" />
+          <img src="/Mu.png" style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={styles.logoSchool}>PP. Muhammadiyah Mambaul Ulum</div>
-            <div style={styles.logoSub}>Portal Keuangan Orang Tua</div>
+            <div style={styles.logoSub}>Sistem Informasi Keuangan Santri</div>
           </div>
         </div>
-        <div style={styles.loginTitle}>Selamat Datang</div>
-        <div style={styles.formGroup}>
+        <div style={styles.loginTitle}>Ahlan Wa Sahlan</div>        <div style={styles.formGroup}>
           <label style={styles.label}>Username</label>
           <input style={styles.input} type="text" placeholder="Masukkan username"
             value={username} onChange={e => setUsername(e.target.value)}
@@ -69,8 +143,37 @@ function LoginPage({ onLogin }) {
         </div>
         {error && <div style={styles.errorBox}>{error}</div>}
         <button style={styles.loginBtn} onClick={handleLogin} disabled={loading}>
-          {loading ? "Memuat..." : "Masuk"}
-        </button>
+  {loading ? (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+      <div style={{
+        width: 14, height: 14, borderRadius: "50%",
+        border: "2px solid rgba(255,255,255,0.25)",
+        borderTop: "2px solid white",
+        animation: "spin 0.8s linear infinite"
+      }} />
+      Memuat...
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}} />
+    </div>
+  ) : "Masuk"}
+</button>
+<InstallButton />
+
+{/* Tombol Admin */}
+{window.location.pathname !== "/admin" && (
+<div style={{ marginTop: 14, borderTop: "1px solid #f1f5f9", paddingTop: 14 }}>
+  <a href="/admin" style={{
+    display: "block", width: "100%", textAlign: "center",
+    background: "#f8fafc", border: "1.5px solid #e2e8f0",
+    borderRadius: 10, padding: 12, fontSize: 14,
+    fontWeight: 600, color: "#475569", textDecoration: "none",
+    cursor: "pointer", boxSizing: "border-box"
+  }}>
+    🔐 Masuk sebagai Admin
+  </a>
+</div>
+)}
       </div>
     </div>
   );
@@ -145,7 +248,7 @@ function InfoPembayaran({ copied, setCopied }) {
             <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 3 }}>
               {BANK} · a.n <span style={{ fontWeight: 600, color: "#374151" }}>{NAMA_REKENING}</span>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", letterSpacing: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", letterSpacing: 1 }}>
               {REKENING}
             </div>
           </div>
@@ -246,17 +349,35 @@ function Dashboard({ user, onLogout }) {
 
   const filtered = tagihan.filter(t => activeTab === "semua" ? true : t.status === activeTab);
 
-  const handleLogout = () => { localStorage.removeItem("token"); onLogout(); };
+  const handleLogout = () => {
+    if (!confirm("Yakin ingin keluar dari akun?")) return;
+    localStorage.removeItem("token");
+    onLogout();
+  };
+
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      if (confirm("Yakin ingin keluar dari akun?")) {
+        localStorage.removeItem("token");
+        onLogout();
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   return (
     <div style={styles.dashBg}>
       {/* HEADER */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Mu.jpg" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
+          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Portal Keuangan Orang Tua</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Sistem Informasi Keuangan Santri</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -519,27 +640,82 @@ function Dashboard({ user, onLogout }) {
 // ROOT
 // ============================================================
 export default function App() {
-  const [user, setUser] = useState(null);
   const isAdmin = window.location.pathname === "/admin";
-  if (isAdmin) return <Admin />;
-  return user
-    ? <Dashboard user={user} onLogout={() => setUser(null)} />
-    : <LoginPage onLogin={setUser} />;
-}
+  const [appLoading, setAppLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+    if (token && savedUser) {
+      try { return JSON.parse(savedUser); }
+      catch { return null; }
+    }
+    return null;
+  });
 
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.href = isAdmin ? "/manifest-admin.json" : "/manifest.json";
+    const theme = document.querySelector('meta[name="theme-color"]');
+    if (theme) theme.setAttribute("content", isAdmin ? "#064e3b" : "#1e3a8a");
+    setTimeout(() => setAppLoading(false), 4500);
+  }, []);
+
+  if (appLoading) return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #064e3b, #065f46, #047857)",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "system-ui, sans-serif", gap: 20
+    }}>
+      <img src="/Mu.png" style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover" }} alt="logo" />
+      <div style={{ color: "white", fontWeight: 700, fontSize: 18 }}>PP. Muhammadiyah Mambaul Ulum</div>
+      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600 }}>Andong - Boyolali</div>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Sistem Informasi Keuangan Santri</div>
+      <div style={{
+        width: 14, height: 14, borderRadius: "50%",
+        border: "2px solid rgba(255,255,255,0.25)",
+        borderTop: "2px solid white",
+        animation: "spin 0.8s linear infinite"
+      }} />
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}} />
+    </div>
+  );
+
+  if (isAdmin) return <Admin />;
+
+  const handleLogin = (userData) => {
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  return user
+    ? <Dashboard user={user} onLogout={handleLogout} />
+    : <LoginPage onLogin={handleLogin} />;
+}
 // ============================================================
 // STYLES
 // ============================================================
 const styles = {
   loginBg: {
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #1e3a8a, #0369a1)",
+    background: "linear-gradient(135deg, #064e3b, #065f46, #047857)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontFamily: "system-ui, sans-serif"
+    fontFamily: "system-ui, sans-serif",
+    padding: "0 16px",
+    boxSizing: "border-box"
   },
   loginCard: {
-    background: "white", borderRadius: 20, padding: 40,
-    width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+    background: "white", borderRadius: 20, padding: 32,
+    width: "90%", maxWidth: 360, boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
   },
   loginLogo: {
     display: "flex", alignItems: "center", gap: 14,
@@ -559,7 +735,7 @@ const styles = {
     padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 14
   },
   loginBtn: {
-    width: "100%", background: "linear-gradient(135deg, #1e40af, #0369a1)",
+    width: "100%", background: "linear-gradient(135deg, #065f46, #047857)",
     color: "white", border: "none", borderRadius: 10, padding: 14,
     fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 4
   },

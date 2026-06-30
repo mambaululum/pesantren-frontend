@@ -1,0 +1,22 @@
+{
+  "name": "Admin PP. Mambaul Ulum",
+  "short_name": "Admin Mambaul",
+  "description": "Dashboard Admin Keuangan PP. Muhammadiyah Mambaul Ulum",
+  "start_url": "/admin",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/android-192x192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-512x512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
