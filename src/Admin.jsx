@@ -13,6 +13,29 @@ const LoadingBarData = () => (
   </div>
 );
 const formatRupiah = (n) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
+
+// Parse & format tanggal/jam ke WIB (Asia/Jakarta) secara konsisten, apapun timezone perangkat/browser.
+// Kalau string tanggal dari server tidak menyertakan info zona waktu (tanpa 'Z' / offset),
+// dianggap sebagai UTC dulu supaya konversi ke WIB akurat (bukan ikut zona lokal perangkat yang bisa salah).
+const parseTanggalUTC = (dateStr) => {
+  if (!dateStr) return null;
+  const sudahAdaZona = /Z$|[+-]\d{2}:?\d{2}$/.test(dateStr);
+  const str = sudahAdaZona ? dateStr : dateStr.replace(" ", "T") + "Z";
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? new Date(dateStr) : d;
+};
+const formatTanggalWIB = (dateStr, opts = { day: "2-digit", month: "short", year: "numeric" }) => {
+  const d = parseTanggalUTC(dateStr);
+  return d ? d.toLocaleDateString("id-ID", { ...opts, timeZone: "Asia/Jakarta" }) : "-";
+};
+const formatJamWIB = (dateStr, opts = { hour: "2-digit", minute: "2-digit", hour12: false }) => {
+  const d = parseTanggalUTC(dateStr);
+  return d ? d.toLocaleTimeString("id-ID", { ...opts, timeZone: "Asia/Jakarta" }) : "-";
+};
+const formatTanggalJamWIB = (dateStr, opts = { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) => {
+  const d = parseTanggalUTC(dateStr);
+  return d ? d.toLocaleString("id-ID", { ...opts, timeZone: "Asia/Jakarta" }) : "-";
+};
 const toBase64 = (url) => new Promise((resolve) => {
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -3836,9 +3859,8 @@ function RiwayatNotif({ headers }) {
                 <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap", fontSize: 12 }}>
                     {r.created_at ? (() => {
-                      const d = new Date(r.created_at);
-                      const tgl = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-                      const jam = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
+                      const tgl = formatTanggalWIB(r.created_at);
+                      const jam = formatJamWIB(r.created_at);
                       return <><div>{tgl}</div><div style={{ color: "#6366f1", fontWeight: 600 }}>🕐 {jam} WIB</div></>;
                     })() : "-"}
                   </td>
@@ -4071,7 +4093,7 @@ function Pengumuman({ santri, headers }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{r.judul || "Pengumuman"}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{new Date(r.created_at).toLocaleString("id-ID")} · {r.terkirim} penerima</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{formatTanggalJamWIB(r.created_at)} · {r.terkirim} penerima</div>
                 <div style={{ fontSize: 13, color: "#374151", marginTop: 4, maxHeight: 60, overflow: "hidden" }}>{r.pesan}</div>
               </div>
               <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 12, padding: "3px 10px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>✅ Terkirim</span>
