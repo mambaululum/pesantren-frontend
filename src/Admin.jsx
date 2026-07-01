@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import axios from "axios";
 
 const API = "https://pesantren-backend.vercel.app/api/admin";
@@ -3556,6 +3556,24 @@ function RiwayatPembayaran({ headers }) {
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
 
+  // Kelompokkan pembayaran per santri + tanggal yang sama (satu kali setoran = satu kelompok)
+  const sortedForGroup = [...filtered].sort((a, b) => {
+    const dateCompare = new Date(b.tanggal_bayar) - new Date(a.tanggal_bayar);
+    if (dateCompare !== 0) return dateCompare;
+    return (a.nama_siswa || "").localeCompare(b.nama_siswa || "", "id");
+  });
+  const groupMap = {};
+  const groups = [];
+  sortedForGroup.forEach(r => {
+    const key = `${r.nama_siswa}__${r.tanggal_bayar}`;
+    if (!groupMap[key]) {
+      groupMap[key] = { key, tanggal_bayar: r.tanggal_bayar, nama_siswa: r.nama_siswa, kelas: r.kelas, items: [], total: 0 };
+      groups.push(groupMap[key]);
+    }
+    groupMap[key].items.push(r);
+    groupMap[key].total += Number(r.jumlah_bayar || 0);
+  });
+
   const togglePilih = (id) => setDipilih(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const pilihSemua = () => setDipilih(filtered.map(r => r.id));
   const batalPilih = () => { setDipilih([]); setModeHapus(false); };
@@ -3663,33 +3681,44 @@ function RiwayatPembayaran({ headers }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
               )}
-              {filtered.map((r, i) => (
-                <tr key={r.id} onClick={() => modeHapus && togglePilih(r.id)}
-                  style={{ background: modeHapus && dipilih.includes(r.id) ? "#fef2f2" : i % 2 === 0 ? "#fff" : "#f8fafc", cursor: modeHapus ? "pointer" : "default" }}>
-                  {modeHapus && (
-                    <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
-                      <input type="checkbox" checked={dipilih.includes(r.id)} onChange={() => togglePilih(r.id)} style={{ width: 15, height: 15, accentColor: "#ef4444" }} />
-                    </td>
+              {groups.map((g, gi) => (
+                <Fragment key={g.key}>
+                  {g.items.length > 1 && (
+                    <tr style={{ background: "#eff6ff" }}>
+                      <td colSpan={modeHapus ? 8 : 7} style={{ padding: "8px 12px", borderTop: gi > 0 ? "2px solid #bfdbfe" : "none", borderBottom: "1px solid #dbeafe", fontWeight: 700, fontSize: 12.5, color: "#1e40af" }}>
+                        🧾 Satu Setoran — {g.nama_siswa} — {g.tanggal_bayar ? new Date(g.tanggal_bayar).toLocaleDateString("id-ID") : "-"} — {g.items.length} item — Total: {formatRupiah(g.total)}
+                      </td>
+                    </tr>
                   )}
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
-                    {r.tanggal_bayar ? new Date(r.tanggal_bayar).toLocaleDateString("id-ID") : "-"}
-                  </td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.nama_siswa}</td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.kelas}</td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.jenis_tagihan}</td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#16a34a", fontWeight: 600, whiteSpace: "nowrap" }}>
-                    {formatRupiah(r.jumlah_bayar)}
-                  </td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
-                    {formatRupiah(r.total_tagihan)}
-                  </td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{r.keterangan || "-"}</td>
-                  <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
-                    <button onClick={() => handleHapus(r.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑️</button>
-                  </td>
-                </tr>
+                  {g.items.map((r, i) => (
+                    <tr key={r.id} onClick={() => modeHapus && togglePilih(r.id)}
+                      style={{ background: modeHapus && dipilih.includes(r.id) ? "#fef2f2" : i % 2 === 0 ? "#fff" : "#f8fafc", cursor: modeHapus ? "pointer" : "default" }}>
+                      {modeHapus && (
+                        <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                          <input type="checkbox" checked={dipilih.includes(r.id)} onChange={() => togglePilih(r.id)} style={{ width: 15, height: 15, accentColor: "#ef4444" }} />
+                        </td>
+                      )}
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                        {r.tanggal_bayar ? new Date(r.tanggal_bayar).toLocaleDateString("id-ID") : "-"}
+                      </td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.nama_siswa}</td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{r.kelas}</td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>{g.items.length > 1 ? "↳ " : ""}{r.jenis_tagihan}</td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#16a34a", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {formatRupiah(r.jumlah_bayar)}
+                      </td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                        {formatRupiah(r.total_tagihan)}
+                      </td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{r.keterangan || "-"}</td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
+                        <button onClick={() => handleHapus(r.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>
