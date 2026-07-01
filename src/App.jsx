@@ -618,20 +618,31 @@ function Dashboard({ user, onLogout }) {
   return (
     <div style={styles.dashBg}>
       {/* HEADER */}
-      <header style={styles.header}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Sistem Informasi Keuangan Santri</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ color: "white", fontSize: 13 }}>👤 {user.nama}</span>
-          <NotifikasiPanel token={localStorage.getItem("token")} />
-          <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
-        </div>
-      </header>
+<header style={styles.header}>
+  <div style={{ height: 3, background: "linear-gradient(90deg, #c9a84c, #f0d080, #c9a84c)" }} />
+  <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", gap: 8 }}>
+    <img src="/Mu.png" style={{ width: 34, height: 34, borderRadius: 9, objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.6)", flexShrink: 0 }} alt="logo" />
+    <div>
+      <div style={{ fontWeight: 700, fontSize: 13, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
+      <div style={{ fontSize: 9, color: "rgba(201,168,76,0.9)", letterSpacing: "0.5px" }}>✦ Sistem Informasi Keuangan Santri ✦</div>
+    </div>
+  </div>
+  <div style={{ height: "0.5px", background: "rgba(255,255,255,0.1)", margin: "0 16px" }} />
+  <div style={{ padding: "6px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      {user.foto_url
+        ? <img src={user.foto_url} alt={user.nama} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.7)", flexShrink: 0 }} />
+        : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(201,168,76,0.3)", border: "1.5px solid rgba(201,168,76,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "white", fontWeight: 700, flexShrink: 0 }}>{user.nama?.charAt(0).toUpperCase()}</div>
+      }
+      <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: 600 }}>{user.nama}</span>
+    </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <NotifikasiPanel token={localStorage.getItem("token")} />
+      <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
+    </div>
+  </div>
+  <div style={{ height: 2, background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)" }} />
+</header>
 
       <div style={styles.dashContent}>
         {/* KARTU SANTRI */}
@@ -1012,9 +1023,8 @@ const styles = {
   },
   dashBg: { minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui, sans-serif" },
   header: {
-    background: "linear-gradient(135deg, #1e3a8a, #1e40af)",
-    padding: "0 24px", height: 60,
-    display: "flex", alignItems: "center", justifyContent: "space-between"
+    background: "linear-gradient(135deg, #0f2460, #1e40af)",
+    overflow: "hidden",
   },
   logoutBtn: {
     background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8,
