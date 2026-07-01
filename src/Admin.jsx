@@ -2583,20 +2583,7 @@ function Pengingat({ santri, headers }) {
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>🔔 Pengingat Pembayaran</div>
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
-{/* CRON JOB */}
-      <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>⏰ Jadwal Pengingat Otomatis</div>
-        <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, fontSize: 13, color: "#92400e", border: "1px solid #fde68a" }}>
-          ⚠️ <b>Penting:</b> Karena aplikasi di-host di Vercel (serverless), jadwal otomatis tidak bisa berjalan sendiri.<br/>
-          Gunakan <b>cron-job.org</b> (gratis) untuk memanggil URL ini setiap bulan:<br/>
-          <code style={{ background: "#fef3c7", padding: "4px 8px", borderRadius: 6, fontSize: 12, display: "block", marginTop: 6, wordBreak: "break-all" }}>
-            GET https://pesantren-backend.vercel.app/api/admin/cron/pengingat
-          </code>
-          <button onClick={() => window.open("https://cron-job.org", "_blank")} style={{ marginTop: 8, padding: "6px 14px", background: "#f59e0b", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-            🔗 Buka cron-job.org
-          </button>
-        </div>
-      </div>
+
       {/* KIRIM SEMUA */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>📢 Kirim Pengingat ke Semua Wali</div>
