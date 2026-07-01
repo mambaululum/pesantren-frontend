@@ -1,5 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 import Admin from "./Admin";
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -313,7 +319,239 @@ function InfoPembayaran({ copied, setCopied }) {
     </div>
   );
 }
+function NotifikasiPanel({ token }) {
+  const [notifs, setNotifs] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const sudahDipushRef = useRef(new Set());
 
+  const getUserId = () => {
+    try {
+      return JSON.parse(atob(token.split('.')[1])).id;
+    } catch { return null; }
+  };
+
+  const tampilkanPush = (n) => {
+    if (Notification.permission === 'granted') {
+      new Notification(n.judul, { body: n.pesan, icon: '/Mu.png', badge: '/Mu.png' });
+    }
+  };
+
+  const fetchNotifs = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/notifikasi`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifs(res.data);
+      res.data.forEach(n => sudahDipushRef.current.add(n.id));
+    } catch {}
+  };
+  
+useEffect(() => {
+  fetchNotifs();
+
+  const userId = getUserId();
+  if (!userId) return;
+
+  // Subscribe push (tidak blocking)
+  const subscribePush = async () => {
+    if (!('serviceWorker' in navigator)) return;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    if (Notification.permission !== 'granted') return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+      });
+      await axios.post(`${API}/admin/push-subscribe`, { subscription }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (e) {
+      console.log('Push subscribe error:', e);
+    }
+  };
+  subscribePush();
+
+  const channel = supabase
+    .channel('notifikasi-' + userId)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifikasi',
+      filter: `user_id=eq.${userId}`
+    }, (payload) => {
+      const n = payload.new;
+      setNotifs(prev => [n, ...prev]);
+      if (!sudahDipushRef.current.has(n.id)) {
+        sudahDipushRef.current.add(n.id);
+        tampilkanPush(n);
+      }
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'notifikasi',
+      filter: `user_id=eq.${userId}`
+    }, (payload) => {
+      setNotifs(prev =>
+        prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
+      );
+    })
+    .subscribe();
+
+  const interval = setInterval(fetchNotifs, 60000);
+
+  return () => {
+    supabase.removeChannel(channel);
+    clearInterval(interval);
+  };
+}, []);
+
+  const belumBaca = notifs.filter(n => !n.sudah_dibaca).length;
+
+  const tandaiBaca = async (id) => {
+    await axios.patch(`${API}/admin/notifikasi/${id}/baca`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, sudah_dibaca: true } : n));
+  };
+
+  const handleKlikNotif = async (n) => {
+    await tandaiBaca(n.id);
+    setDetail(n);
+  };
+
+  const bacaSemua = async () => {
+    await axios.patch(`${API}/admin/notifikasi/baca-semua`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setNotifs(prev => prev.map(n => ({ ...n, sudah_dibaca: true })));
+  };
+
+  const warnaBadge = { tagihan: '#dc2626', bayar: '#059669', koreksi: '#d97706', info: '#1e40af' };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(!open)} style={{
+        background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8,
+        padding: '6px 10px', cursor: 'pointer', position: 'relative', color: 'white', fontSize: 18
+      }}>
+        🔔
+        {belumBaca > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            background: '#ef4444', color: 'white',
+            borderRadius: 999, fontSize: 10, fontWeight: 700,
+            padding: '1px 5px', minWidth: 16, textAlign: 'center'
+          }}>{belumBaca}</span>
+        )}
+      </button>
+
+      {detail && (
+        <div onClick={() => setDetail(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 16, padding: 24,
+            width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>{detail.judul}</div>
+            <div style={{ fontSize: 14, color: '#475569', marginBottom: 12 }}>{detail.pesan}</div>
+            {detail.data_json && Object.keys(detail.data_json).length > 0 && (
+              <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 8 }}>RINCIAN</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {detail.data_json.jenis && <Row label="Jenis" value={detail.data_json.jenis} />}
+                  {detail.data_json.jumlah && <Row label="Total Tagihan" value={`Rp ${Number(detail.data_json.jumlah).toLocaleString('id-ID')}`} />}
+                  {detail.data_json.jumlah_bayar && <Row label="Dibayar" value={`Rp ${Number(detail.data_json.jumlah_bayar).toLocaleString('id-ID')}`} color="#059669" />}
+                  {detail.data_json.sisa > 0 && <Row label="Sisa" value={`Rp ${Number(detail.data_json.sisa).toLocaleString('id-ID')}`} color="#dc2626" />}
+                  {detail.data_json.sisa === 0 && detail.data_json.jumlah_bayar && <Row label="Status" value="✅ Lunas" color="#059669" />}
+                  {detail.data_json.tanggal_bayar && <Row label="Tanggal" value={formatTanggal(detail.data_json.tanggal_bayar)} />}
+                  {detail.data_json.lunasList && detail.data_json.lunasList.map((t, i) => (
+                    <Row key={i} label={t.jenis} value={`Rp ${Number(t.dibayar).toLocaleString('id-ID')} ✅`} color="#059669" />
+                  ))}
+                  {detail.data_json.cicilanItem && (
+                    <Row
+                      label={`${detail.data_json.cicilanItem.jenis} (cicilan)`}
+                      value={`Dibayar Rp ${Number(detail.data_json.cicilanItem.dibayar).toLocaleString('id-ID')} — Sisa Rp ${Number(detail.data_json.cicilanItem.sisa).toLocaleString('id-ID')}`}
+                      color="#d97706"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right' }}>
+              {new Date(detail.created_at).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          position: 'fixed', top: 64, right: 8, left: 8,
+          background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+          zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+        }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>🔔 Notifikasi</div>
+            {belumBaca > 0 && (
+              <button onClick={bacaSemua} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 12, color: '#1e40af', fontWeight: 600
+              }}>Tandai semua dibaca</button>
+            )}
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {notifs.length === 0 ? (
+              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                Belum ada notifikasi
+              </div>
+            ) : notifs.map(n => (
+              <div key={n.id} onClick={() => handleKlikNotif(n)} style={{
+                padding: '12px 16px', borderBottom: '1px solid #f8fafc',
+                background: n.sudah_dibaca ? 'white' : '#eff6ff',
+                cursor: 'pointer', transition: 'background 0.2s'
+              }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
+                    background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 2 }}>{n.judul}</div>
+                    <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{n.pesan}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                      {new Date(n.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function Row({ label, value, color }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+      <span style={{ color: '#64748b' }}>{label}</span>
+      <span style={{ fontWeight: 600, color: color || '#0f172a' }}>{value}</span>
+    </div>
+  );
+}
 // ============================================================
 // DASHBOARD WALI SANTRI
 // ============================================================
@@ -323,12 +561,12 @@ function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("semua");
   const [copied, setCopied] = useState("");
 
-  // Gunakan useState dengan callback untuk fetch data saat mount
-  useState(() => {
+  // Gunakan useEffect dengan callback untuk fetch data saat mount
+  useEffect(() => {
     const token = localStorage.getItem("token");
     axios.get(`${API}/tagihan`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => { setTagihan(res.data); setLoading(false); })
-      .catch(() => setLoading(false));
+    .then(res => { setTagihan(res.data); setLoading(false); })
+    .catch(() => setLoading(false));
   }, []);
 
   // ── Kalkulasi ringkasan ──
@@ -347,7 +585,15 @@ function Dashboard({ user, onLogout }) {
   const kekurangan = totalTagihan - sudahBayar;
   const persen = totalTagihan > 0 ? Math.round((sudahBayar / totalTagihan) * 100) : 0;
 
-  const filtered = tagihan.filter(t => activeTab === "semua" ? true : t.status === activeTab);
+  const filtered = tagihan
+    .filter(t => activeTab === "semua" ? true : t.status === activeTab)
+    .slice()
+    .sort((a, b) => {
+      if (!a.tanggal_bayar && !b.tanggal_bayar) return 0;
+      if (!a.tanggal_bayar) return -1;
+      if (!b.tanggal_bayar) return 1;
+      return new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
+    });
 
   const handleLogout = () => {
     if (!confirm("Yakin ingin keluar dari akun?")) return;
@@ -372,42 +618,20 @@ function Dashboard({ user, onLogout }) {
   return (
     <div style={styles.dashBg}>
       {/* HEADER */}
-<header style={styles.header}>
-  {/* Garis gold atas */}
-  <div style={{ height: 3, background: "linear-gradient(90deg, #c9a84c, #f0d080, #c9a84c)" }} />
-
-  {/* Baris 1: Logo + Nama Pesantren */}
-  <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", gap: 8 }}>
-    <img src="/Mu.png" style={{ width: 34, height: 34, borderRadius: 9, objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.6)", flexShrink: 0 }} alt="logo" />
-    <div>
-      <div style={{ fontWeight: 700, fontSize: 13, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
-      <div style={{ fontSize: 9, color: "rgba(201,168,76,0.9)", letterSpacing: "0.5px" }}>✦ Sistem Informasi Keuangan Santri ✦</div>
-    </div>
-  </div>
-
-  {/* Garis pemisah tipis */}
-  <div style={{ height: "0.5px", background: "rgba(255,255,255,0.1)", margin: "0 16px" }} />
-
-  {/* Baris 2: Foto + Nama user + Notif + Keluar */}
-  <div style={{ padding: "6px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      {user.foto_url
-        ? <img src={user.foto_url} alt={user.nama} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.7)", flexShrink: 0 }} />
-        : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(201,168,76,0.3)", border: "1.5px solid rgba(201,168,76,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "white", fontWeight: 700, flexShrink: 0 }}>
-            {user.nama?.charAt(0).toUpperCase()}
+      <header style={styles.header}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/Mu.png" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} alt="logo" />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>Sistem Informasi Keuangan Santri</div>
           </div>
-      }
-      <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: 600 }}>{user.nama}</span>
-    </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <NotifikasiPanel token={localStorage.getItem("token")} />
-      <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
-    </div>
-  </div>
-
-  {/* Garis gold bawah */}
-  <div style={{ height: 2, background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)" }} />
-</header>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ color: "white", fontSize: 13 }}>👤 {user.nama}</span>
+          <NotifikasiPanel token={localStorage.getItem("token")} />
+          <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
+        </div>
+      </header>
 
       <div style={styles.dashContent}>
         {/* KARTU SANTRI */}
@@ -709,10 +933,34 @@ export default function App() {
 
   if (isAdmin) return <Admin />;
 
-  const handleLogin = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
-  };
+ const handleLogin = async (userData) => {
+  localStorage.setItem("user", JSON.stringify(userData));
+  setUser(userData);
+
+  // Minta izin notifikasi
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+
+  // Subscribe Web Push
+  if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+      });
+
+      // Kirim subscription ke backend
+      await axios.post(`${API}/admin/push-subscribe`, { subscription }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+    } catch (e) {
+      console.log('Push subscribe error:', e);
+    }
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -764,8 +1012,9 @@ const styles = {
   },
   dashBg: { minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui, sans-serif" },
   header: {
-    background: "linear-gradient(135deg, #0f2460, #1e40af)",
-    overflow: "hidden",
+    background: "linear-gradient(135deg, #1e3a8a, #1e40af)",
+    padding: "0 24px", height: 60,
+    display: "flex", alignItems: "center", justifyContent: "space-between"
   },
   logoutBtn: {
     background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8,
