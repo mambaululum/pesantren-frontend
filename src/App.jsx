@@ -324,6 +324,7 @@ function NotifikasiPanel({ token }) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const sudahDipushRef = useRef(new Set());
+  const panelRef = useRef(null);
 
   const getUserId = () => {
     try {
@@ -413,6 +414,22 @@ useEffect(() => {
 
   const belumBaca = notifs.filter(n => !n.sudah_dibaca).length;
 
+  // Tutup panel kalau klik di luar area notifikasi (lebih mudah daripada harus klik lonceng lagi)
+  useEffect(() => {
+    if (!open) return;
+    const handleClickLuar = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickLuar);
+    document.addEventListener('touchstart', handleClickLuar);
+    return () => {
+      document.removeEventListener('mousedown', handleClickLuar);
+      document.removeEventListener('touchstart', handleClickLuar);
+    };
+  }, [open]);
+
   const tandaiBaca = async (id) => {
     await axios.patch(`${API}/admin/notifikasi/${id}/baca`, {}, {
       headers: { Authorization: `Bearer ${token}` }
@@ -435,7 +452,7 @@ useEffect(() => {
   const warnaBadge = { tagihan: '#dc2626', bayar: '#059669', koreksi: '#d97706', info: '#1e40af' };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={panelRef} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(!open)} style={{
         background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8,
         padding: '6px 10px', cursor: 'pointer', position: 'relative', color: 'white', fontSize: 18
@@ -495,51 +512,64 @@ useEffect(() => {
       )}
 
       {open && (
-        <div style={{
-          position: 'fixed', top: 64, right: 8, left: 8,
-          background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
-          zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
-        }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>🔔 Notifikasi</div>
-            {belumBaca > 0 && (
-              <button onClick={bacaSemua} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 12, color: '#1e40af', fontWeight: 600
-              }}>Tandai semua dibaca</button>
-            )}
-          </div>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {notifs.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-                Belum ada notifikasi
+        <>
+          {/* Overlay transparan — tap dimana saja di layar untuk menutup panel */}
+          <div onClick={() => setOpen(false)} style={{
+            position: 'fixed', inset: 0, zIndex: 998, background: 'transparent'
+          }} />
+          <div style={{
+            position: 'fixed', top: 64, right: 8, left: 8,
+            background: 'white', borderRadius: 14, boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+            zIndex: 999, overflow: 'hidden', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>🔔 Notifikasi</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {belumBaca > 0 && (
+                  <button onClick={bacaSemua} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, color: '#1e40af', fontWeight: 600
+                  }}>Tandai semua dibaca</button>
+                )}
+                <button onClick={() => setOpen(false)} style={{
+                  background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer',
+                  width: 26, height: 26, fontSize: 14, color: '#475569', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>✕</button>
               </div>
-            ) : notifs.map(n => (
-              <div key={n.id} onClick={() => handleKlikNotif(n)} style={{
-                padding: '12px 16px', borderBottom: '1px solid #f8fafc',
-                background: n.sudah_dibaca ? 'white' : '#eff6ff',
-                cursor: 'pointer', transition: 'background 0.2s'
-              }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
-                    background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 2 }}>{n.judul}</div>
-                    <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{n.pesan}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                      {new Date(n.created_at).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {notifs.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                  Belum ada notifikasi
+                </div>
+              ) : notifs.map(n => (
+                <div key={n.id} onClick={() => handleKlikNotif(n)} style={{
+                  padding: '12px 16px', borderBottom: '1px solid #f8fafc',
+                  background: n.sudah_dibaca ? 'white' : '#eff6ff',
+                  cursor: 'pointer', transition: 'background 0.2s'
+                }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
+                      background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 2 }}>{n.judul}</div>
+                      <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{n.pesan}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                        {new Date(n.created_at).toLocaleDateString('id-ID', {
+                          day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
