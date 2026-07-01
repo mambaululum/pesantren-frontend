@@ -802,6 +802,10 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const [resultBulk, setResultBulk] = useState(null);
   const [kirimWABulk, setKirimWABulk] = useState(true);
   const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
+  // Item non-tagihan (pembayaran campuran) — bagian dari setoran yang tidak terkait tagihan manapun
+  const [adaItemLain, setAdaItemLain] = useState(false);
+  const [itemLainKeperluan, setItemLainKeperluan] = useState("");
+  const [itemLainJumlah, setItemLainJumlah] = useState("");
 
   const handleSelectTagihan = (t) => {
     setSelectedTagihan(t);
@@ -824,11 +828,14 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
   // BULK: simpan pembayaran
   const handleSimpanBulk = async () => {
-    if (selectedTagihanBulk.length === 0) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
+    if (selectedTagihanBulk.length === 0 && !adaItemLain) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
     if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar!"); return; }
+    if (adaItemLain && (!itemLainJumlah || !itemLainKeperluan)) { setMsg("❌ Isi keperluan & jumlah item non-tagihan!"); return; }
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/pembayaran-bulk`, {
+      const pakaiCampuran = adaItemLain && Number(itemLainJumlah) > 0;
+      const url = pakaiCampuran ? `${API}/pembayaran-campuran` : `${API}/pembayaran-bulk`;
+      const payload = {
         user_id: selectedUser.id,
         tagihan_ids: selectedTagihanBulk.map(t => t.id),
         jumlah_total: Number(formBulk.jumlah_total),
@@ -836,11 +843,18 @@ function InputCicilan({ santri: santriRaw, headers }) {
         keterangan: keteranganBulk,
         metode_bayar: metodeBayarBulk,
         kirim_notif: kirimWABulk,
-      }, { headers });
-      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas. 📲 Notifikasi WA terkirim.`);
+      };
+      if (pakaiCampuran) {
+        payload.item_lain = { keperluan: itemLainKeperluan, jumlah: Number(itemLainJumlah) };
+      }
+      const res = await axios.post(url, payload, { headers });
+      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${pakaiCampuran ? ` + 1 item non-tagihan` : ""}. 📲 Notifikasi WA terkirim.`);
       setSelectedTagihanBulk([]);
       setFormBulk({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
       setKeteranganBulk("");
+      setAdaItemLain(false);
+      setItemLainKeperluan("");
+      setItemLainJumlah("");
       setShowKonfirmasiBulk(false);
       // Optimistic: hapus tagihan yang lunas dari state lokal
       const lunasIds = selectedTagihanBulk.map(t => t.id);
@@ -1123,7 +1137,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
           </div>
 
           {/* FORM BULK */}
-          {modeBulk && selectedTagihanBulk.length > 0 && (
+          {modeBulk && (selectedTagihanBulk.length > 0 || adaItemLain) && (
             <div style={{ marginTop: 14, background: "#f0fdf4", borderRadius: 10, padding: 14 }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>
                 {selectedTagihanBulk.length} tagihan dipilih — Total sisa: <span style={{ color: "#dc2626" }}>{formatRupiah(totalSisaBulk)}</span>
@@ -1131,7 +1145,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
               <input
                 style={{ ...iStyle, marginBottom: 8 }}
                 type="number"
-                placeholder="Jumlah bayar total"
+                placeholder="Jumlah bayar total (setoran wali)"
                 value={formBulk.jumlah_total}
                 onChange={e => setFormBulk(f => ({ ...f, jumlah_total: e.target.value }))}
               />
@@ -1147,9 +1161,41 @@ function InputCicilan({ santri: santriRaw, headers }) {
                 value={keteranganBulk}
                 onChange={e => setKeteranganBulk(e.target.value)}
               />
-              {formBulk.jumlah_total && Number(formBulk.jumlah_total) > totalSisaBulk && (
+
+              {/* ITEM NON-TAGIHAN (Pembayaran Campuran) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: adaItemLain ? 8 : 12, cursor: "pointer" }}
+                onClick={() => setAdaItemLain(!adaItemLain)}>
+                <span style={{ fontSize: 18, color: adaItemLain ? "#059669" : "#cbd5e1" }}>
+                  {adaItemLain ? "☑️" : "⬜"}
+                </span>
+                <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+                  ➕ Ada bagian setoran untuk sesuatu di luar tagihan?
+                </span>
+              </div>
+              {adaItemLain && (
+                <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                  <input
+                    style={{ ...iStyle, marginBottom: 8 }}
+                    placeholder="Keperluan (mis: kaos, buku, dll)"
+                    value={itemLainKeperluan}
+                    onChange={e => setItemLainKeperluan(e.target.value)}
+                  />
+                  <input
+                    style={iStyle}
+                    type="number"
+                    placeholder="Jumlah untuk item ini"
+                    value={itemLainJumlah}
+                    onChange={e => setItemLainJumlah(e.target.value)}
+                  />
+                  <div style={{ fontSize: 11, color: "#854d0e", marginTop: 6 }}>
+                    Jumlah ini dipotong dari total setoran di atas, sisanya baru dialokasikan ke tagihan yang dicentang.
+                  </div>
+                </div>
+              )}
+
+              {formBulk.jumlah_total && (Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0)) > totalSisaBulk && (
                 <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 10 }}>
-                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - totalSisaBulk)}</b> — catat di keterangan
+                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0) - totalSisaBulk)}</b> — catat di keterangan
                 </div>
               )}
               {!showKonfirmasiBulk ? (
@@ -1161,14 +1207,23 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   }}
                   disabled={loading}
                 >
-                  {`💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
+                  {adaItemLain
+                    ? `💾 Bayar ${selectedTagihanBulk.length} Tagihan + Item Lain`
+                    : `💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
                 </button>
               ) : (
                 <div style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 10, padding: 14, marginTop: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📋 Konfirmasi Pembayaran</div>
                   <div style={{ fontSize: 13, marginBottom: 6 }}>Santri: <b>{selectedUser?.nama_siswa}</b></div>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Bayar: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Setoran: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
+                  {selectedTagihanBulk.length > 0 && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  )}
+                  {adaItemLain && itemLainJumlah && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>
+                      Item non-tagihan: <b>{itemLainKeperluan || "-"} ({formatRupiah(Number(itemLainJumlah))})</b>
+                    </div>
+                  )}
                   {keteranganBulk && <div style={{ fontSize: 13, marginBottom: 6 }}>Keterangan: <b>{keteranganBulk}</b></div>}
 
                   {/* Metode Bayar */}
