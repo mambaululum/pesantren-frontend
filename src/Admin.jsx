@@ -89,25 +89,26 @@ function AdminDashboard({ admin, onLogout }) {
   const [menu, setMenu] = useState("rekap");
   const menuRef = useRef(null);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const allMenuKeys = ["rekap","santri","tagihan","cicilan","bayar_umum","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
 
   const handleTouchStart = (e) => {
-  touchStartX.current = e.touches[0].clientX;
-  touchStartX.startY = e.touches[0].clientY;
-};
-const handleTouchEnd = (e) => {
-  if (touchStartX.current === null) return;
-  const diffX = touchStartX.current - e.changedTouches[0].clientX;
-  const diffY = touchStartX.startY - e.changedTouches[0].clientY;
-  // Abaikan kalau gerakan vertikal lebih besar dari horizontal
-  if (Math.abs(diffY) > Math.abs(diffX) * 0.5) return;
-  // Minimal swipe 120px — lebih besar agar tidak mudah terpicu
-  if (Math.abs(diffX) < 120) return;
-  const idx = allMenuKeys.indexOf(menu);
-  if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
-  else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
-  touchStartX.current = null;
-};
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current - e.changedTouches[0].clientY;
+    // Abaikan kalau gerakan vertikal lebih besar dari horizontal
+    if (Math.abs(diffY) > Math.abs(diffX) * 0.5) return;
+    // Minimal swipe 120px — lebih besar agar tidak mudah terpicu
+    if (Math.abs(diffX) < 120) return;
+    const idx = allMenuKeys.indexOf(menu);
+    if (diffX > 0 && idx < allMenuKeys.length - 1) setMenu(allMenuKeys[idx + 1]);
+    else if (diffX < 0 && idx > 0) setMenu(allMenuKeys[idx - 1]);
+    touchStartX.current = null;
+  };
   const [santri, setSantri] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modeTes, setModeTes] = useState(false);
@@ -271,21 +272,13 @@ const handleTouchEnd = (e) => {
           </button>
         ))}
       </div>
-      {/* Area swipe khusus */}
-<div
-  onTouchStart={handleTouchStart}
-  onTouchEnd={handleTouchEnd}
-  style={{ height: 6, background: "transparent" }}
-/>
-{/* Area swipe khusus */}
-<div
-  onTouchStart={handleTouchStart}
-  onTouchEnd={handleTouchEnd}
-  style={{ height: 6, background: "transparent" }}
-/>
-<div 
-  style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}
->
+      {/* Area swipe */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ height: 6, background: "transparent" }}
+      />
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 12px" }}>
         {menu === "rekap" && (
           <RekapKeuangan
             santri={santri}
@@ -809,9 +802,12 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const [resultBulk, setResultBulk] = useState(null);
   const [kirimWABulk, setKirimWABulk] = useState(true);
   const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
+  // Item non-tagihan (pembayaran campuran) — bagian dari setoran yang tidak terkait tagihan manapun
+  const [adaItemLain, setAdaItemLain] = useState(false);
+  const [itemLainKeperluan, setItemLainKeperluan] = useState("");
+  const [itemLainJumlah, setItemLainJumlah] = useState("");
 
   const handleSelectTagihan = (t) => {
-    console.log('selectedTagihan data:', JSON.stringify(t));
     setSelectedTagihan(t);
     setEditCicilan(null);
     loadRiwayat(t.id);
@@ -832,11 +828,14 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
   // BULK: simpan pembayaran
   const handleSimpanBulk = async () => {
-    if (selectedTagihanBulk.length === 0) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
+    if (selectedTagihanBulk.length === 0 && !adaItemLain) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
     if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar!"); return; }
+    if (adaItemLain && (!itemLainJumlah || !itemLainKeperluan)) { setMsg("❌ Isi keperluan & jumlah item non-tagihan!"); return; }
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/pembayaran-bulk`, {
+      const pakaiCampuran = adaItemLain && Number(itemLainJumlah) > 0;
+      const url = pakaiCampuran ? `${API}/pembayaran-campuran` : `${API}/pembayaran-bulk`;
+      const payload = {
         user_id: selectedUser.id,
         tagihan_ids: selectedTagihanBulk.map(t => t.id),
         jumlah_total: Number(formBulk.jumlah_total),
@@ -844,11 +843,18 @@ function InputCicilan({ santri: santriRaw, headers }) {
         keterangan: keteranganBulk,
         metode_bayar: metodeBayarBulk,
         kirim_notif: kirimWABulk,
-      }, { headers });
-      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas. 📲 Notifikasi WA terkirim.`);
+      };
+      if (pakaiCampuran) {
+        payload.item_lain = { keperluan: itemLainKeperluan, jumlah: Number(itemLainJumlah) };
+      }
+      const res = await axios.post(url, payload, { headers });
+      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${pakaiCampuran ? ` + 1 item non-tagihan` : ""}. 📲 Notifikasi WA terkirim.`);
       setSelectedTagihanBulk([]);
       setFormBulk({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
       setKeteranganBulk("");
+      setAdaItemLain(false);
+      setItemLainKeperluan("");
+      setItemLainJumlah("");
       setShowKonfirmasiBulk(false);
       // Optimistic: hapus tagihan yang lunas dari state lokal
       const lunasIds = selectedTagihanBulk.map(t => t.id);
@@ -902,7 +908,6 @@ function InputCicilan({ santri: santriRaw, headers }) {
 
       // Simpan data tagihan sebelum di-null
       const tagihanSnapshot = { ...selectedTagihan };
-      console.log('tagihanSnapshot:', JSON.stringify(tagihanSnapshot));
 
       // Kirim WA jika ada kelebihan dan admin pilih kirim
       if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
@@ -918,7 +923,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             keterangan,
             user_id: selectedUser.id,
           }, { headers });
-        } catch (e) { console.log("WA kelebihan gagal:", e.message); }
+        } catch (e) { /* WA kelebihan gagal, lanjut */ }
       }
 
       if (kelebihan > 0) {
@@ -937,7 +942,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
             keterangan: keterangan || "",
             user_id: selectedUser.id,
           }, { headers });
-        } catch (e) { console.log("WA konfirmasi gagal:", e.message); }
+        } catch (e) { /* WA konfirmasi gagal, lanjut */ }
         setMsg("✅ " + res.data.message + " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit.");
       } else {
         setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
@@ -1132,7 +1137,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
           </div>
 
           {/* FORM BULK */}
-          {modeBulk && selectedTagihanBulk.length > 0 && (
+          {modeBulk && (selectedTagihanBulk.length > 0 || adaItemLain) && (
             <div style={{ marginTop: 14, background: "#f0fdf4", borderRadius: 10, padding: 14 }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>
                 {selectedTagihanBulk.length} tagihan dipilih — Total sisa: <span style={{ color: "#dc2626" }}>{formatRupiah(totalSisaBulk)}</span>
@@ -1140,7 +1145,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
               <input
                 style={{ ...iStyle, marginBottom: 8 }}
                 type="number"
-                placeholder="Jumlah bayar total"
+                placeholder="Jumlah bayar total (setoran wali)"
                 value={formBulk.jumlah_total}
                 onChange={e => setFormBulk(f => ({ ...f, jumlah_total: e.target.value }))}
               />
@@ -1156,9 +1161,41 @@ function InputCicilan({ santri: santriRaw, headers }) {
                 value={keteranganBulk}
                 onChange={e => setKeteranganBulk(e.target.value)}
               />
-              {formBulk.jumlah_total && Number(formBulk.jumlah_total) > totalSisaBulk && (
+
+              {/* ITEM NON-TAGIHAN (Pembayaran Campuran) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: adaItemLain ? 8 : 12, cursor: "pointer" }}
+                onClick={() => setAdaItemLain(!adaItemLain)}>
+                <span style={{ fontSize: 18, color: adaItemLain ? "#059669" : "#cbd5e1" }}>
+                  {adaItemLain ? "☑️" : "⬜"}
+                </span>
+                <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+                  ➕ Ada bagian setoran untuk sesuatu di luar tagihan?
+                </span>
+              </div>
+              {adaItemLain && (
+                <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                  <input
+                    style={{ ...iStyle, marginBottom: 8 }}
+                    placeholder="Keperluan (mis: kaos, buku, dll)"
+                    value={itemLainKeperluan}
+                    onChange={e => setItemLainKeperluan(e.target.value)}
+                  />
+                  <input
+                    style={iStyle}
+                    type="number"
+                    placeholder="Jumlah untuk item ini"
+                    value={itemLainJumlah}
+                    onChange={e => setItemLainJumlah(e.target.value)}
+                  />
+                  <div style={{ fontSize: 11, color: "#854d0e", marginTop: 6 }}>
+                    Jumlah ini dipotong dari total setoran di atas, sisanya baru dialokasikan ke tagihan yang dicentang.
+                  </div>
+                </div>
+              )}
+
+              {formBulk.jumlah_total && (Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0)) > totalSisaBulk && (
                 <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 10 }}>
-                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - totalSisaBulk)}</b> — catat di keterangan
+                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0) - totalSisaBulk)}</b> — catat di keterangan
                 </div>
               )}
               {!showKonfirmasiBulk ? (
@@ -1170,14 +1207,23 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   }}
                   disabled={loading}
                 >
-                  {`💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
+                  {adaItemLain
+                    ? `💾 Bayar ${selectedTagihanBulk.length} Tagihan + Item Lain`
+                    : `💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
                 </button>
               ) : (
                 <div style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 10, padding: 14, marginTop: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📋 Konfirmasi Pembayaran</div>
                   <div style={{ fontSize: 13, marginBottom: 6 }}>Santri: <b>{selectedUser?.nama_siswa}</b></div>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Bayar: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Setoran: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
+                  {selectedTagihanBulk.length > 0 && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  )}
+                  {adaItemLain && itemLainJumlah && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>
+                      Item non-tagihan: <b>{itemLainKeperluan || "-"} ({formatRupiah(Number(itemLainJumlah))})</b>
+                    </div>
+                  )}
                   {keteranganBulk && <div style={{ fontSize: 13, marginBottom: 6 }}>Keterangan: <b>{keteranganBulk}</b></div>}
 
                   {/* Metode Bayar */}
@@ -1228,15 +1274,30 @@ function InputCicilan({ santri: santriRaw, headers }) {
       {selectedTagihan && (
         <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           {/* INFO TAGIHAN */}
-          <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, marginBottom: 2 }}>{selectedTagihan.jenis}</div>
-            {selectedTagihan.semester && (
-              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, marginBottom: 6 }}>📅 Semester: {selectedTagihan.semester}</div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
-              <span>Total Tagihan: <b>{formatRupiah(selectedTagihan.jumlah)}</b></span>
-              <span>Sudah Bayar: <b style={{ color: "#059669" }}>{formatRupiah(totalSudahBayar)}</b></span>
-              <span>Sisa: <b style={{ color: "#dc2626" }}>{formatRupiah(sisaTagihan)}</b></span>
+          <div style={{ background: "#fffbeb", borderRadius: 10, padding: 12, marginBottom: 14, border: "1.5px solid #fde68a" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#92400e" }}>📋 {selectedTagihan.jenis}</div>
+                {selectedTagihan.semester && (
+                  <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, marginTop: 2 }}>📅 Semester: {selectedTagihan.semester}</div>
+                )}
+              </div>
+              <button
+                onClick={() => { setSelectedTagihan(null); setRiwayatBayar([]); setForm(f => ({ ...f, jumlah_bayar: "" })); setShowKonfirmasiLebih(false); }}
+                style={{ fontSize: 11, padding: "4px 10px", borderRadius: 7, border: "1.5px solid #f59e0b", background: "white", color: "#b45309", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+              >🔄 Ganti Tagihan</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginTop: 8 }}>
+              {[
+                { label: "Total Tagihan", val: formatRupiah(selectedTagihan.jumlah), color: "#1e40af", bg: "#eff6ff" },
+                { label: "Sudah Bayar", val: formatRupiah(totalSudahBayar), color: "#059669", bg: "#ecfdf5" },
+                { label: "Sisa Tagihan", val: formatRupiah(sisaTagihan), color: "#dc2626", bg: "#fef2f2" },
+              ].map((c, i) => (
+                <div key={i} style={{ background: c.bg, borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#64748b", marginBottom: 2 }}>{c.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.color }}>{c.val}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1296,16 +1357,60 @@ function InputCicilan({ santri: santriRaw, headers }) {
             <>
               <label style={lStyle}>3. Input Pembayaran Sekarang</label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 8 }}>
-                <div>
-                  <label style={lStyle}>Jumlah Cicilan (Rp)</label>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lStyle}>Jumlah Bayar (Rp)</label>
                   <input
-                    style={{ ...iStyle, borderColor: Number(form.jumlah_bayar) > sisaTagihan ? "#f59e0b" : undefined }}
+                    style={{ ...iStyle, borderColor: Number(form.jumlah_bayar) > sisaTagihan ? "#f59e0b" : undefined, fontSize: 16, fontWeight: 600 }}
                     type="number"
-                    placeholder={`Sisa: ${sisaTagihan.toLocaleString("id-ID")}`}
+                    placeholder={`Sisa tagihan: ${sisaTagihan.toLocaleString("id-ID")}`}
                     value={form.jumlah_bayar}
                     onChange={e => { setForm({ ...form, jumlah_bayar: e.target.value }); setShowKonfirmasiLebih(false); }}
                     disabled={showKonfirmasiLebih}
                   />
+                  {/* Tombol Nominal Cepat */}
+                  {!showKonfirmasiLebih && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 5 }}>⚡ Nominal cepat:</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[100000, 250000, 500000, 1000000, 2000000].map(nominal => (
+                          <button
+                            key={nominal}
+                            type="button"
+                            onClick={() => { setForm(f => ({ ...f, jumlah_bayar: String(nominal) })); setShowKonfirmasiLebih(false); }}
+                            style={{
+                              padding: "6px 12px", borderRadius: 8,
+                              border: `2px solid ${Number(form.jumlah_bayar) === nominal ? "#059669" : "#e5e7eb"}`,
+                              background: Number(form.jumlah_bayar) === nominal ? "#f0fdf4" : "white",
+                              color: Number(form.jumlah_bayar) === nominal ? "#059669" : "#374151",
+                              fontWeight: 600, fontSize: 12, cursor: "pointer"
+                            }}
+                          >
+                            {nominal >= 1000000 ? `${nominal/1000000}jt` : `${nominal/1000}rb`}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => { setForm(f => ({ ...f, jumlah_bayar: String(sisaTagihan) })); setShowKonfirmasiLebih(false); }}
+                          style={{
+                            padding: "6px 12px", borderRadius: 8,
+                            border: `2px solid ${Number(form.jumlah_bayar) === sisaTagihan ? "#059669" : "#6366f1"}`,
+                            background: Number(form.jumlah_bayar) === sisaTagihan ? "#f0fdf4" : "#eef2ff",
+                            color: Number(form.jumlah_bayar) === sisaTagihan ? "#059669" : "#6366f1",
+                            fontWeight: 700, fontSize: 12, cursor: "pointer"
+                          }}
+                        >
+                          ✓ Lunas ({formatRupiah(sisaTagihan)})
+                        </button>
+                        {form.jumlah_bayar && (
+                          <button
+                            type="button"
+                            onClick={() => { setForm(f => ({ ...f, jumlah_bayar: "" })); setShowKonfirmasiLebih(false); }}
+                            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+                          >✕</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={lStyle}>Titipan Uang Jajan (Rp)</label>
@@ -1523,39 +1628,13 @@ function DataSantri({ santri, headers, onRefresh }) {
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-  {s.foto_url
-    ? <img src={s.foto_url} alt={s.nama_siswa} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: "2px solid #e2e8f0", flexShrink: 0 }} />
-    : <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1e3a8a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
-        {s.nama_siswa?.charAt(0).toUpperCase()}
-      </div>
-  }
-  <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
-</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
                   <div style={{ fontSize: 12, color: "#64748b" }}>{s.kelas} · Wali: {s.nama} · @{s.username}</div>
                   <div style={{ fontSize: 12, marginTop: 2 }}>
                     {s.no_hp ? <span style={{ color: "#059669" }}>📱 {s.no_hp} <span style={{ background: "#dcfce7", padding: "1px 6px", borderRadius: 4 }}>WA Aktif</span></span> : <span style={{ color: "#f59e0b" }}>⚠️ No. WA belum diisi</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ background: "#0891b2", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-  📷
-  <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result.split(',')[1];
-      try {
-        await axios.post(`${API}/santri/${s.id}/foto`, { foto_base64: base64, mime_type: file.type }, { headers });
-        setMsg("✅ Foto berhasil diupload!");
-        onRefresh();
-        setTimeout(() => setMsg(""), 3000);
-      } catch { setMsg("❌ Gagal upload foto"); }
-    };
-    reader.readAsDataURL(file);
-  }} />
-</label>
                   <button style={btnBlue} onClick={() => handleEdit(s)}>✏️ Edit</button>
 <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => handleKirimAkun(s)}>📲 Kirim Akun</button>
 <button style={btnRed} onClick={() => handleDelete(s.id, s.nama_siswa)}>🗑️ Hapus</button>
@@ -1726,8 +1805,10 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
   const handleDelete = async (id) => {
     if (!confirm("Hapus tagihan ini? Semua cicilan ikut terhapus!")) return;
-    await axios.delete(`${API}/tagihan/${id}`, { headers });
-    setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); setTimeout(() => setMsg(""), 3000);
+    try {
+      await axios.delete(`${API}/tagihan/${id}`, { headers });
+      setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); setTimeout(() => setMsg(""), 3000);
+    } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menghapus tagihan")); }
   };
 
   // ── Rekap handlers ────────────────────────────────────────
@@ -2062,7 +2143,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                           try {
                             const res = await axios.get(`${API}/tagihan/${s.id}`, { headers });
                             setTagihanReferensi(res.data);
-                          } catch(e) { setTagihanReferensi([]); }
+                          } catch { setTagihanReferensi([]); }
                         }}
                         style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #f8fafc", background: copyReferensi?.id === s.id ? "#f5f3ff" : "white", borderLeft: copyReferensi?.id === s.id ? "3px solid #7c3aed" : "3px solid transparent", display: "flex", justifyContent: "space-between" }}
                       >
@@ -2126,7 +2207,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                               kirim_notif: false,
                             }, { headers });
                             berhasil++;
-                          } catch(e) {}
+                          } catch {}
                         }
                         setMsg(`✅ ${berhasil} tagihan berhasil di-copy ke ${selectedUser.nama_siswa}!`);
                         setLoadingCopy(false);
@@ -2194,7 +2275,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
                           if (!confirm(`Hapus ${selectedTagihanHapus.length} tagihan? Semua cicilan ikut terhapus!`)) return;
                           let berhasil = 0;
                           for (const id of selectedTagihanHapus) {
-                            try { await axios.delete(`${API}/tagihan/${id}`, { headers }); berhasil++; } catch(e) {}
+                            try { await axios.delete(`${API}/tagihan/${id}`, { headers }); berhasil++; } catch {}
                           }
                           setMsg(`✅ ${berhasil} tagihan berhasil dihapus!`);
                           setSelectedTagihanHapus([]);
@@ -3725,7 +3806,12 @@ function RiwayatNotif({ headers }) {
               {filtered.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap", fontSize: 12 }}>
-                    {r.created_at ? new Date(r.created_at).toLocaleString("id-ID") : "-"}
+                    {r.created_at ? (() => {
+                      const d = new Date(r.created_at);
+                      const tgl = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+                      const jam = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false });
+                      return <><div>{tgl}</div><div style={{ color: "#6366f1", fontWeight: 600 }}>🕐 {jam} WIB</div></>;
+                    })() : "-"}
                   </td>
                   <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
                     <div style={{ fontWeight: 600 }}>{r.nama_siswa}</div>
@@ -3835,7 +3921,7 @@ function Pengumuman({ santri, headers }) {
       }, { headers });
 
       setMsg("✅ " + res.data.message);
-      setForm({ judul: "", pesan: "", target: "semua" });
+      setForm({ judul: "", pesan: "", target: "semua", kirim_grup: false, grup_id: "" });
       setFile(null);
       setSelectedSantri([]);
       loadRiwayat();
