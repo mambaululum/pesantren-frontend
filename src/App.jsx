@@ -346,11 +346,14 @@ function NotifikasiPanel({ token }) {
       res.data.forEach(n => sudahDipushRef.current.add(n.id));
     } catch {}
   };
-
- useEffect(() => {
+  
+useEffect(() => {
   fetchNotifs();
 
-  // ✅ Auto subscribe push setiap buka app (tidak perlu login ulang)
+  const userId = getUserId();
+  if (!userId) return;
+
+  // Subscribe push (tidak blocking)
   const subscribePush = async () => {
     if (!('serviceWorker' in navigator)) return;
     if (Notification.permission === 'default') {
@@ -373,43 +376,40 @@ function NotifikasiPanel({ token }) {
   };
   subscribePush();
 
-  const userId = getUserId();
-  if (!userId) return;
-
   const channel = supabase
     .channel('notifikasi-' + userId)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifikasi',
-        filter: `user_id=eq.${userId}`
-      }, (payload) => {
-        const n = payload.new;
-        setNotifs(prev => [n, ...prev]);
-        if (!sudahDipushRef.current.has(n.id)) {
-          sudahDipushRef.current.add(n.id);
-          tampilkanPush(n);
-        }
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'notifikasi',
-        filter: `user_id=eq.${userId}`
-      }, (payload) => {
-        setNotifs(prev =>
-          prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
-        );
-      })
-      .subscribe();
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifikasi',
+      filter: `user_id=eq.${userId}`
+    }, (payload) => {
+      const n = payload.new;
+      setNotifs(prev => [n, ...prev]);
+      if (!sudahDipushRef.current.has(n.id)) {
+        sudahDipushRef.current.add(n.id);
+        tampilkanPush(n);
+      }
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'notifikasi',
+      filter: `user_id=eq.${userId}`
+    }, (payload) => {
+      setNotifs(prev =>
+        prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n)
+      );
+    })
+    .subscribe();
 
-    const interval = setInterval(fetchNotifs, 60000);
+  const interval = setInterval(fetchNotifs, 60000);
 
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
+  return () => {
+    supabase.removeChannel(channel);
+    clearInterval(interval);
+  };
+}, []);
 
   const belumBaca = notifs.filter(n => !n.sudah_dibaca).length;
 
