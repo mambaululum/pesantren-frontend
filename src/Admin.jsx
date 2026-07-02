@@ -1658,6 +1658,29 @@ function DataSantri({ santri, headers, onRefresh }) {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ ...btnGray, cursor: "pointer", display: "inline-block" }}>
+  📷
+  <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      try {
+        await axios.post(`${API}/santri/${s.id}/foto`, {
+          foto_base64: base64,
+          mime_type: file.type
+        }, { headers });
+        setMsg("✅ Foto berhasil diupload!");
+        onRefresh();
+        setTimeout(() => setMsg(""), 3000);
+      } catch (err) {
+        setMsg("❌ Gagal upload foto");
+      }
+    };
+    reader.readAsDataURL(file);
+  }} />
+</label>
                   <button style={btnBlue} onClick={() => handleEdit(s)}>✏️ Edit</button>
 <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => handleKirimAkun(s)}>📲 Kirim Akun</button>
 <button style={btnRed} onClick={() => handleDelete(s.id, s.nama_siswa)}>🗑️ Hapus</button>
@@ -2743,7 +2766,15 @@ function Pengingat({ santri, headers }) {
               return (
                 <div key={s.id} style={{ padding: "12px 16px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+  {s.foto_url
+    ? <img src={s.foto_url} alt={s.nama_siswa} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: "2px solid #e2e8f0" }} />
+    : <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1e3a8a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
+        {s.nama_siswa?.charAt(0).toUpperCase()}
+      </div>
+  }
+  <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
+</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>{s.kelas} · Wali: {s.nama}</div>
                     <div style={{ fontSize: 12, marginTop: 2 }}>
                       {s.no_hp
