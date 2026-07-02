@@ -21,6 +21,25 @@ window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
 });
+// Cabut push subscription pas logout — biar HP yg logout nggak terus
+// kebagian notif punya akun lain yang login di HP yang sama.
+const cabutPushSubscription = async (token) => {
+  try {
+    if (!('serviceWorker' in navigator) || !token) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+
+    await axios.post(`${API}/admin/push-unsubscribe`, { endpoint: sub.endpoint }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    await sub.unsubscribe();
+  } catch (e) {
+    console.log('Gagal cabut push subscription:', e.message);
+  }
+};
+
 const formatRupiah = (n) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
@@ -625,16 +644,18 @@ function Dashboard({ user, onLogout }) {
       return new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
     });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!confirm("Yakin ingin keluar dari akun?")) return;
+    await cabutPushSubscription(localStorage.getItem("token"));
     localStorage.removeItem("token");
     onLogout();
   };
 
   useEffect(() => {
     window.history.pushState(null, "", window.location.href);
-    const handlePopState = () => {
+    const handlePopState = async () => {
       if (confirm("Yakin ingin keluar dari akun?")) {
+        await cabutPushSubscription(localStorage.getItem("token"));
         localStorage.removeItem("token");
         onLogout();
       } else {
