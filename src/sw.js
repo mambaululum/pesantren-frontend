@@ -1,20 +1,15 @@
-const CACHE_NAME = 'mambaul-ulum-v1';
-const urlsToCache = ['/'];
+import { precacheAndRoute } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
-});
+// ------------------------------------------------------------
+// Precaching otomatis dari Workbox (menggantikan generateSW).
+// Baris ini WAJIB ada — Vite/Workbox akan inject daftar file
+// yang perlu di-cache ke __WB_MANIFEST saat build.
+// ------------------------------------------------------------
+precacheAndRoute(self.__WB_MANIFEST);
 
-self.addEventListener('activate', e => {
-  e.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(response => response || fetch(e.request))
-  );
-});
+self.skipWaiting();
+clientsClaim();
 
 // ------------------------------------------------------------
 // PUSH NOTIFICATION
@@ -34,10 +29,10 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || '',
-    icon: '/Mu.png',        // sesuaikan path icon PWA kamu
+    icon: '/Mu.png',
     badge: '/Mu.png',
     vibrate: [200, 100, 200],
-    data: { url: data.url || '/' }, // dipakai saat notif diklik
+    data: { url: data.url || '/' },
     tag: data.tag || 'default',
     renotify: true,
   };
