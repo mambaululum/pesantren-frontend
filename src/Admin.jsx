@@ -3654,7 +3654,12 @@ function RiwayatPembayaran({ headers }) {
     axios.get(`${API}/riwayat-pembayaran`, { headers, params: { bulan: bulanCetak } })
       .then(r => {
         const result = Array.isArray(r.data) ? r.data : [];
-        const sorted = [...result].sort((a, b) => new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar));
+        const sorted = [...result].sort((a, b) => {
+          const dt = new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
+          if (dt !== 0) return dt;
+          // Tanggal sama -> urut pakai id (mendekati urutan waktu bayar sebenarnya)
+          return (Number(a.id) || 0) - (Number(b.id) || 0);
+        });
         RiwayatPembayaran._cacheBulanan = { ...(RiwayatPembayaran._cacheBulanan || {}), [cacheKey]: sorted };
         setDataBulanan(sorted);
         setLoadingBulanan(false);
@@ -3686,7 +3691,9 @@ function RiwayatPembayaran({ headers }) {
   const sortedForGroup = [...filtered].sort((a, b) => {
     const dateCompare = new Date(b.tanggal_bayar) - new Date(a.tanggal_bayar);
     if (dateCompare !== 0) return dateCompare;
-    return (a.nama_siswa || "").localeCompare(b.nama_siswa || "", "id");
+    // Tanggal sama -> urut pakai id (mendekati urutan waktu bayar sebenarnya,
+    // karena tanggal_bayar cuma simpan tanggal, tidak simpan jam)
+    return (Number(b.id) || 0) - (Number(a.id) || 0);
   });
   const groupMap = {};
   const groups = [];
