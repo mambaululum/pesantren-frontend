@@ -818,11 +818,14 @@ function InputCicilan({ santri: santriRaw, headers }) {
   };
 
   const [modeBulk, setModeBulk] = useState(false);
-  const [selectedTagihanBulk, setSelectedTagihanBulk] = useState([]);
-  const [formBulk, setFormBulk] = useState({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+  // itemsBulk: daftar tagihan yang dipilih utk dibayar dalam 1 transaksi, masing-masing
+  // punya nominal `bayar` sendiri (default = sisa penuh / lunas), bisa dikurangi admin
+  // supaya jadi cicilan. Beberapa tagihan boleh sekaligus jadi cicilan dalam 1 transaksi.
+  // Bentuk tiap item: { id, jenis, jumlah, sisa, bayar }
+  const [itemsBulk, setItemsBulk] = useState([]);
+  const [tanggalBulk, setTanggalBulk] = useState(new Date().toISOString().split("T")[0]);
   const [keteranganBulk, setKeteranganBulk] = useState("");
   const [showKonfirmasiBulk, setShowKonfirmasiBulk] = useState(false);
-  const [resultBulk, setResultBulk] = useState(null);
   const [kirimWABulk, setKirimWABulk] = useState(true);
   const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
   // Item non-tagihan (pembayaran campuran) — bagian dari setoran yang tidak terkait tagihan manapun
@@ -839,49 +842,70 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const totalSudahBayar = riwayatBayar.reduce((a, b) => a + Number(b.jumlah_bayar), 0);
   const sisaTagihan = selectedTagihan ? Number(selectedTagihan.jumlah) - totalSudahBayar : 0;
 
-  // BULK: toggle centang tagihan
+  // BULK: toggle centang tagihan — saat dicentang, defaultnya langsung diisi Lunas (bayar = sisa penuh)
   const handleToggleBulk = (t) => {
-    setSelectedTagihanBulk(prev =>
-      prev.find(x => x.id === t.id) ? prev.filter(x => x.id !== t.id) : [...prev, t]
-    );
+    setItemsBulk(prev => {
+      const ada = prev.find(x => x.id === t.id);
+      if (ada) return prev.filter(x => x.id !== t.id);
+      const sisa = Math.round(Number(t.jumlah) - Number(t.sudah_dicicil || 0));
+      return [...prev, { id: t.id, jenis: t.jenis, jumlah: Number(t.jumlah), sisa, bayar: sisa }];
+    });
   };
 
-  // BULK: hitung total sisa tagihan yang dipilih
-  const totalSisaBulk = selectedTagihanBulk.reduce((a, t) => a + Math.round(Number(t.jumlah) - (t.sudah_dicicil || 0)), 0);
+  // BULK: ubah nominal bayar untuk 1 tagihan spesifik (dikunci maksimal = sisa tagihan itu)
+  const handleUbahBayarBulk = (id, value) => {
+    setItemsBulk(prev => prev.map(it => {
+      if (it.id !== id) return it;
+      if (value === "") return { ...it, bayar: "" };
+      const v = Math.max(0, Math.min(Number(value), it.sisa));
+      return { ...it, bayar: v };
+    }));
+  };
 
-  // BULK: simpan pembayaran
+  // BULK: total keseluruhan yang akan dibayar (jumlah semua item terpilih + item non-tagihan)
+  const totalBayarBulk = itemsBulk.reduce((a, it) => a + (Number(it.bayar) || 0), 0) + (adaItemLain ? Number(itemLainJumlah || 0) : 0);
+  const totalSisaBulk = itemsBulk.reduce((a, it) => a + it.sisa, 0);
+  const jumlahAkanLunas = itemsBulk.filter(it => Number(it.bayar) >= it.sisa && it.sisa > 0).length;
+  const jumlahAkanCicil = itemsBulk.filter(it => Number(it.bayar) > 0 && Number(it.bayar) < it.sisa).length;
+
+  // BULK: simpan pembayaran fleksibel — tiap tagihan dibayar sesuai nominal yang diisi admin
   const handleSimpanBulk = async () => {
-    if (selectedTagihanBulk.length === 0 && !adaItemLain) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
-    if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar!"); return; }
+    if (itemsBulk.length === 0 && !adaItemLain) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
     if (adaItemLain && (!itemLainJumlah || !itemLainKeperluan)) { setMsg("❌ Isi keperluan & jumlah item non-tagihan!"); return; }
+    const itemKosong = itemsBulk.find(it => !it.bayar || Number(it.bayar) <= 0);
+    if (itemKosong) { setMsg(`❌ Isi nominal bayar untuk "${itemKosong.jenis}" (atau batalkan centangnya)`); return; }
     setLoading(true);
     try {
-      const pakaiCampuran = adaItemLain && Number(itemLainJumlah) > 0;
-      const url = pakaiCampuran ? `${API}/pembayaran-campuran` : `${API}/pembayaran-bulk`;
       const payload = {
         user_id: selectedUser.id,
-        tagihan_ids: selectedTagihanBulk.map(t => t.id),
-        jumlah_total: Number(formBulk.jumlah_total),
-        tanggal_bayar: formBulk.tanggal_bayar,
+        items: itemsBulk.map(it => ({ tagihan_id: it.id, jumlah_bayar: Number(it.bayar) })),
+        tanggal_bayar: tanggalBulk,
         keterangan: keteranganBulk,
         metode_bayar: metodeBayarBulk,
         kirim_notif: kirimWABulk,
       };
-      if (pakaiCampuran) {
+      if (adaItemLain && Number(itemLainJumlah) > 0) {
         payload.item_lain = { keperluan: itemLainKeperluan, jumlah: Number(itemLainJumlah) };
       }
-      const res = await axios.post(url, payload, { headers });
-      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${pakaiCampuran ? ` + 1 item non-tagihan` : ""}. 📲 Notifikasi WA terkirim.`);
-      setSelectedTagihanBulk([]);
-      setFormBulk({ jumlah_total: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+      const res = await axios.post(`${API}/pembayaran-fleksibel`, payload, { headers });
+      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${res.data.cicilan ? `, ${res.data.cicilan} tagihan dicicil` : ""}${payload.item_lain ? ` + 1 item non-tagihan` : ""}. 📲 Notifikasi WA terkirim.`);
+      // Optimistic: hapus tagihan yang lunas penuh dari state lokal, update sisa yang baru dicicil
+      const idsLunas = itemsBulk.filter(it => Number(it.bayar) >= it.sisa).map(it => it.id);
+      setTagihan(prev => prev
+        .filter(t => !idsLunas.includes(t.id))
+        .map(t => {
+          const it = itemsBulk.find(x => x.id === t.id);
+          return (it && Number(it.bayar) < it.sisa)
+            ? { ...t, sudah_dicicil: Number(t.sudah_dicicil || 0) + Number(it.bayar) }
+            : t;
+        }));
+      setItemsBulk([]);
+      setTanggalBulk(new Date().toISOString().split("T")[0]);
       setKeteranganBulk("");
       setAdaItemLain(false);
       setItemLainKeperluan("");
       setItemLainJumlah("");
       setShowKonfirmasiBulk(false);
-      // Optimistic: hapus tagihan yang lunas dari state lokal
-      const lunasIds = selectedTagihanBulk.map(t => t.id);
-      setTagihan(prev => prev.filter(t => !lunasIds.includes(t.id)));
       setSelectedTagihan(null);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
     setLoading(false);
@@ -1129,58 +1153,98 @@ function InputCicilan({ santri: santriRaw, headers }) {
             <label style={lStyle}>2. Pilih Tagihan yang Akan Dibayar</label>
             <button
               style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid #059669", background: modeBulk ? "#059669" : "white", color: modeBulk ? "white" : "#059669", cursor: "pointer", fontWeight: 600 }}
-              onClick={() => { setModeBulk(!modeBulk); setSelectedTagihanBulk([]); setSelectedTagihan(null); setShowKonfirmasiBulk(false); }}
+              onClick={() => { setModeBulk(!modeBulk); setItemsBulk([]); setSelectedTagihan(null); setShowKonfirmasiBulk(false); }}
             >
               {modeBulk ? "✓ Mode Bulk" : "☑️ Bayar Beberapa"}
             </button>
           </div>
+          {modeBulk && (
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 10, background: "#f8fafc", borderRadius: 8, padding: "8px 10px" }}>
+              💡 Centang tagihan yang mau dibayar. Defaultnya langsung <b>Lunas</b> (nominal = sisa penuh) — geser/ubah nominalnya kalau mau dijadikan <b>Cicilan</b>. Boleh campur: sebagian tagihan lunas, sebagian dicicil, dalam 1x setoran.
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {tagihan.map(t => {
-              const isSelected = modeBulk ? selectedTagihanBulk.find(x => x.id === t.id) : selectedTagihan?.id === t.id;
+              const isSelected = modeBulk ? itemsBulk.find(x => x.id === t.id) : selectedTagihan?.id === t.id;
+              const itemBulk = modeBulk ? itemsBulk.find(x => x.id === t.id) : null;
+              const sisaTampil = Math.round(Number(t.jumlah) - Number(t.sudah_dicicil || 0));
               return (
-                <div key={t.id} onClick={() => modeBulk ? handleToggleBulk(t) : handleSelectTagihan(t)}
-                  style={{ padding: "12px 16px", borderRadius: 10, border: `2px solid ${isSelected ? "#059669" : "#e5e7eb"}`, background: isSelected ? "#f0fdf4" : "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {modeBulk && (
-                    <span style={{ marginRight: 10, fontSize: 18, color: isSelected ? "#059669" : "#cbd5e1" }}>
-                      {isSelected ? "☑️" : "⬜"}
-                    </span>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t.jenis}</div>
-                    {t.semester && (
-                      <div style={{ fontSize: 11, color: "#6366f1", marginTop: 2, fontWeight: 500 }}>
-                        📅 {t.semester}
-                      </div>
+                <div key={t.id}>
+                  <div onClick={() => modeBulk ? handleToggleBulk(t) : handleSelectTagihan(t)}
+                    style={{ padding: "12px 16px", borderRadius: 10, border: `2px solid ${isSelected ? "#059669" : "#e5e7eb"}`, background: isSelected ? "#f0fdf4" : "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    {modeBulk && (
+                      <span style={{ marginRight: 10, fontSize: 18, color: isSelected ? "#059669" : "#cbd5e1" }}>
+                        {isSelected ? "☑️" : "⬜"}
+                      </span>
                     )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{t.jenis}</div>
+                      {t.semester && (
+                        <div style={{ fontSize: 11, color: "#6366f1", marginTop: 2, fontWeight: 500 }}>
+                          📅 {t.semester}
+                        </div>
+                      )}
+                      {t.sudah_dicicil > 0 && (
+                        <div style={{ fontSize: 11, color: "#f59e0b", marginTop: 2, fontWeight: 500 }}>
+                          ⚡ Sudah dicicil: {formatRupiah(t.sudah_dicicil)}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ color: "#dc2626", fontWeight: 700 }}>{formatRupiah(sisaTampil)}</span>
                   </div>
-                  <span style={{ color: "#dc2626", fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
+
+                  {/* Input nominal per-tagihan: muncul kalau tagihan ini dicentang di mode bulk */}
+                  {modeBulk && itemBulk && (
+                    <div onClick={e => e.stopPropagation()} style={{ margin: "6px 4px 4px 30px", padding: "10px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Nominal dibayar untuk tagihan ini (maks {formatRupiah(itemBulk.sisa)}):</div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          type="number"
+                          value={itemBulk.bayar}
+                          max={itemBulk.sisa}
+                          onChange={e => handleUbahBayarBulk(t.id, e.target.value)}
+                          style={{ ...iStyle, flex: 1, padding: "6px 10px", fontSize: 13 }}
+                        />
+                        <button type="button" onClick={() => handleUbahBayarBulk(t.id, itemBulk.sisa)}
+                          style={{ fontSize: 11, padding: "7px 10px", borderRadius: 6, border: "1px solid #059669", background: Number(itemBulk.bayar) >= itemBulk.sisa ? "#059669" : "white", color: Number(itemBulk.bayar) >= itemBulk.sisa ? "white" : "#059669", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          ✅ Lunas
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 11, marginTop: 6, fontWeight: 600, color: Number(itemBulk.bayar) >= itemBulk.sisa ? "#059669" : (Number(itemBulk.bayar) > 0 ? "#f59e0b" : "#94a3b8") }}>
+                        {Number(itemBulk.bayar) >= itemBulk.sisa
+                          ? "✅ Akan LUNAS"
+                          : Number(itemBulk.bayar) > 0
+                            ? `⚡ Cicilan — sisa akan jadi Rp ${formatRupiah(itemBulk.sisa - Number(itemBulk.bayar))}`
+                            : "⚠️ Isi nominal atau batalkan centang"}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
           {/* FORM BULK */}
-          {modeBulk && (selectedTagihanBulk.length > 0 || adaItemLain) && (
+          {modeBulk && (itemsBulk.length > 0 || adaItemLain) && (
             <div style={{ marginTop: 14, background: "#f0fdf4", borderRadius: 10, padding: 14 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                {selectedTagihanBulk.length} tagihan dipilih — Total sisa: <span style={{ color: "#dc2626" }}>{formatRupiah(totalSisaBulk)}</span>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                {itemsBulk.length} tagihan dipilih
+                {jumlahAkanLunas > 0 && <span style={{ color: "#059669" }}> — {jumlahAkanLunas} Lunas</span>}
+                {jumlahAkanCicil > 0 && <span style={{ color: "#f59e0b" }}> · {jumlahAkanCicil} Cicilan</span>}
+              </div>
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>
+                Total Sisa Semula: <span style={{ color: "#dc2626" }}>{formatRupiah(totalSisaBulk)}</span>
+                {" · "}Total Dibayar: <span style={{ color: "#059669" }}>{formatRupiah(totalBayarBulk)}</span>
               </div>
               <input
                 style={{ ...iStyle, marginBottom: 8 }}
-                type="number"
-                placeholder="Jumlah bayar total (setoran wali)"
-                value={formBulk.jumlah_total}
-                onChange={e => setFormBulk(f => ({ ...f, jumlah_total: e.target.value }))}
-              />
-              <input
-                style={{ ...iStyle, marginBottom: 8 }}
                 type="date"
-                value={formBulk.tanggal_bayar}
-                onChange={e => setFormBulk(f => ({ ...f, tanggal_bayar: e.target.value }))}
+                value={tanggalBulk}
+                onChange={e => setTanggalBulk(e.target.value)}
               />
               <input
                 style={{ ...iStyle, marginBottom: 12 }}
-                placeholder="Keterangan sisa / uang jajan (opsional)"
+                placeholder="Keterangan (opsional)"
                 value={keteranganBulk}
                 onChange={e => setKeteranganBulk(e.target.value)}
               />
@@ -1210,37 +1274,39 @@ function InputCicilan({ santri: santriRaw, headers }) {
                     value={itemLainJumlah}
                     onChange={e => setItemLainJumlah(e.target.value)}
                   />
-                  <div style={{ fontSize: 11, color: "#854d0e", marginTop: 6 }}>
-                    Jumlah ini dipotong dari total setoran di atas, sisanya baru dialokasikan ke tagihan yang dicentang.
-                  </div>
                 </div>
               )}
 
-              {formBulk.jumlah_total && (Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0)) > totalSisaBulk && (
-                <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 10 }}>
-                  🎉 Kelebihan: <b>{formatRupiah(Number(formBulk.jumlah_total) - (adaItemLain ? Number(itemLainJumlah || 0) : 0) - totalSisaBulk)}</b> — catat di keterangan
-                </div>
-              )}
               {!showKonfirmasiBulk ? (
                 <button
                   style={{ ...btnGreen, width: "100%", padding: 12, fontSize: 14 }}
                   onClick={() => {
-                    if (!formBulk.jumlah_total) { setMsg("❌ Isi jumlah bayar dulu!"); return; }
+                    if (totalBayarBulk <= 0) { setMsg("❌ Isi nominal bayar dulu!"); return; }
                     setShowKonfirmasiBulk(true);
                   }}
                   disabled={loading}
                 >
                   {adaItemLain
-                    ? `💾 Bayar ${selectedTagihanBulk.length} Tagihan + Item Lain`
-                    : `💾 Bayar ${selectedTagihanBulk.length} Tagihan Sekaligus`}
+                    ? `💾 Bayar ${itemsBulk.length} Tagihan + Item Lain`
+                    : `💾 Bayar ${itemsBulk.length} Tagihan Sekaligus`}
                 </button>
               ) : (
                 <div style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", borderRadius: 10, padding: 14, marginTop: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>📋 Konfirmasi Pembayaran</div>
                   <div style={{ fontSize: 13, marginBottom: 6 }}>Santri: <b>{selectedUser?.nama_siswa}</b></div>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Setoran: <b style={{ color: "#059669" }}>{formatRupiah(Number(formBulk.jumlah_total))}</b></div>
-                  {selectedTagihanBulk.length > 0 && (
-                    <div style={{ fontSize: 13, marginBottom: 6 }}>Tagihan: <b>{selectedTagihanBulk.map(t => t.jenis).join(", ")}</b></div>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Total Setoran: <b style={{ color: "#059669" }}>{formatRupiah(totalBayarBulk)}</b></div>
+                  {itemsBulk.length > 0 && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>
+                      Rincian:
+                      <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                        {itemsBulk.map(it => (
+                          <li key={it.id} style={{ marginBottom: 2 }}>
+                            {it.jenis}: <b>{formatRupiah(Number(it.bayar) || 0)}</b>{" "}
+                            {Number(it.bayar) >= it.sisa ? <span style={{ color: "#059669" }}>(Lunas)</span> : <span style={{ color: "#f59e0b" }}>(Cicilan, sisa {formatRupiah(it.sisa - Number(it.bayar || 0))})</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   {adaItemLain && itemLainJumlah && (
                     <div style={{ fontSize: 13, marginBottom: 6 }}>
@@ -1268,7 +1334,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
                     <span style={{ fontSize: 20, color: kirimWABulk ? "#059669" : "#cbd5e1" }}>
                       {kirimWABulk ? "☑️" : "⬜"}
                     </span>
-                    <span style={{ fontSize: 13, color: "#374151" }}>📲 Kirim notifikasi WA ke wali santri</span>
+                    <span style={{ fontSize: 13, color: "#374151" }}>📲 Kirim 1 pesan kwitansi WA ke wali santri</span>
                   </div>
 
                   <div style={{ display: "flex", gap: 8 }}>
@@ -3549,6 +3615,15 @@ function RiwayatPembayaran({ headers }) {
   const [modeHapus, setModeHapus] = useState(false);
   const [dipilih, setDipilih] = useState([]);
 
+  // --- State untuk Cetak Laporan Bulanan (PDF/JPG) ---
+  const [bulanCetak, setBulanCetak] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [exportingBulanan, setExportingBulanan] = useState(false);
+  const [dataBulanan, setDataBulanan] = useState([]);
+  const [loadingBulanan, setLoadingBulanan] = useState(true);
+
   useEffect(() => {
     // Pakai cache kalau data sudah ada
     if (RiwayatPembayaran._cache) {
@@ -3566,6 +3641,27 @@ function RiwayatPembayaran({ headers }) {
       .catch(() => setLoading(false));
   }, []);
 
+  // Fetch data laporan bulanan langsung dari server (bukan dari state `data` yang bisa terbatas),
+  // supaya laporan tetap lengkap & akurat untuk bulan manapun, dan payload tetap ringkas.
+  useEffect(() => {
+    const cacheKey = `bulan_${bulanCetak}`;
+    if (RiwayatPembayaran._cacheBulanan?.[cacheKey]) {
+      setDataBulanan(RiwayatPembayaran._cacheBulanan[cacheKey]);
+      setLoadingBulanan(false);
+      return;
+    }
+    setLoadingBulanan(true);
+    axios.get(`${API}/riwayat-pembayaran`, { headers, params: { bulan: bulanCetak } })
+      .then(r => {
+        const result = Array.isArray(r.data) ? r.data : [];
+        const sorted = [...result].sort((a, b) => new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar));
+        RiwayatPembayaran._cacheBulanan = { ...(RiwayatPembayaran._cacheBulanan || {}), [cacheKey]: sorted };
+        setDataBulanan(sorted);
+        setLoadingBulanan(false);
+      })
+      .catch(() => setLoadingBulanan(false));
+  }, [bulanCetak]);
+
   const filtered = data.filter(r => {
     const cocokSearch =
       (r.nama_siswa || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -3578,6 +3674,13 @@ function RiwayatPembayaran({ headers }) {
   });
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
+
+  // --- Total untuk Laporan Bulanan (cetak PDF/JPG); dataBulanan sudah difilter di server ---
+  const totalBulanan = dataBulanan.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
+  const namaBulanCetak = (() => {
+    const [y, m] = bulanCetak.split("-");
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  })();
 
   // Kelompokkan pembayaran per santri + tanggal yang sama (satu kali setoran = satu kelompok)
   const sortedForGroup = [...filtered].sort((a, b) => {
@@ -3607,7 +3710,9 @@ function RiwayatPembayaran({ headers }) {
     try {
       await Promise.all(dipilih.map(id => axios.delete(`${API}/pembayaran/${id}`, { headers })));
       RiwayatPembayaran._cache = null;
+      RiwayatPembayaran._cacheBulanan = null;
       setData(prev => prev.filter(r => !dipilih.includes(r.id)));
+      setDataBulanan(prev => prev.filter(r => !dipilih.includes(r.id)));
       setDipilih([]);
       setModeHapus(false);
     } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
@@ -3618,7 +3723,9 @@ function RiwayatPembayaran({ headers }) {
     try {
       await axios.delete(`${API}/pembayaran/${id}`, { headers });
       RiwayatPembayaran._cache = null;
+      RiwayatPembayaran._cacheBulanan = null;
       setData(prev => prev.filter(r => r.id !== id));
+      setDataBulanan(prev => prev.filter(r => r.id !== id));
     } catch (e) {
       alert("Gagal hapus: " + (e.response?.data?.message || e.message));
     }
@@ -3629,7 +3736,9 @@ function RiwayatPembayaran({ headers }) {
     try {
       await axios.delete(`${API}/pembayaran/hapus-semua`, { headers });
       RiwayatPembayaran._cache = null;
+      RiwayatPembayaran._cacheBulanan = null;
       setData([]);
+      setDataBulanan([]);
     } catch (e) {
       alert("Gagal hapus: " + (e.response?.data?.message || e.message));
     }
@@ -3643,6 +3752,7 @@ function RiwayatPembayaran({ headers }) {
   <div style={{ display: "flex", gap: 8 }}>
     <button onClick={() => {
       RiwayatPembayaran._cache = null;
+      RiwayatPembayaran._cacheBulanan = null;
       setLoading(true);
       axios.get(`${API}/riwayat-pembayaran`, { headers })
         .then(r => {
@@ -3747,6 +3857,77 @@ function RiwayatPembayaran({ headers }) {
           </table>
         </div>
       )}
+
+      {/* ====== CETAK LAPORAN BULANAN (PDF / JPG) ====== */}
+      <div style={{ background: "white", borderRadius: 14, padding: 16, marginTop: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>🖨️ Cetak Laporan Pembayaran Bulanan</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              type="month"
+              value={bulanCetak}
+              onChange={e => setBulanCetak(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }}
+            />
+            <TombolExport
+              elId="riwayat-bayar-bulanan"
+              filename={`Riwayat-Pembayaran-${bulanCetak}`}
+              exporting={exportingBulanan}
+              setExporting={setExportingBulanan}
+              disabled={loadingBulanan || dataBulanan.length === 0}
+            />
+          </div>
+        </div>
+
+        {loadingBulanan ? (
+          <LoadingBarData />
+        ) : dataBulanan.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#94a3b8", padding: 20, fontSize: 14 }}>
+            Belum ada data pembayaran di bulan {namaBulanCetak}
+          </div>
+        ) : (
+          <div id="riwayat-bayar-bulanan" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
+            <HeaderLaporan subtitle={`Riwayat Pembayaran — ${namaBulanCetak}`} />
+            <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 16px", marginBottom: 14, fontWeight: 700, fontSize: 14, color: "#065f46" }}>
+              💰 Total Terbayar Bulan {namaBulanCetak}: {formatRupiah(totalBulanan)} — {dataBulanan.length} transaksi
+            </div>
+            <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9" }}>
+                    {["No", "Tanggal", "Nama Santri", "Kelas", "Jenis Tagihan", "Jumlah Bayar", "Keterangan"].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 10px", textAlign: i === 5 ? "right" : "left", fontWeight: 700, color: "#374151", fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dataBulanan.map((r, idx) => (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #f8fafc", background: idx % 2 === 0 ? "white" : "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", color: "#94a3b8" }}>{idx + 1}</td>
+                      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{formatTanggalWIB(r.tanggal_bayar)}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 600 }}>{r.nama_siswa}</td>
+                      <td style={{ padding: "8px 10px", color: "#64748b" }}>{r.kelas}</td>
+                      <td style={{ padding: "8px 10px" }}>{r.jenis_tagihan}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "right", color: "#16a34a", fontWeight: 600, whiteSpace: "nowrap" }}>{formatRupiah(r.jumlah_bayar)}</td>
+                      <td style={{ padding: "8px 10px", color: "#64748b" }}>{r.keterangan || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: "#f1f5f9", fontWeight: 700 }}>
+                    <td colSpan={5} style={{ padding: "8px 10px", textAlign: "right" }}>TOTAL</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: "#065f46" }}>{formatRupiah(totalBulanan)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 10, color: "#94a3b8", textAlign: "center" }}>
+              Dicetak otomatis dari Sistem Keuangan PP. Muhammadiyah Mambaul Ulum
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
