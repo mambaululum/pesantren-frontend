@@ -2850,6 +2850,10 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   // Form tambah semester baru
   const [showTambah, setShowTambah] = useState(false);
   const [formSem, setFormSem] = useState({ semester: "", keterangan: "" });
+  const [dupOtomatis, setDupOtomatis] = useState(true); // duplikat tagihan dari semester sebelumnya otomatis
+  const [semesterAsalTambah, setSemesterAsalTambah] = useState(""); // kosong = otomatis ambil semester terakhir
+  const [kirimNotifTambah, setKirimNotifTambah] = useState(true); // kirim WA ke wali saat semester baru dibuat
+  const [loadingTambah, setLoadingTambah] = useState(false);
 
   // Edit semester
   const [editSemesterId, setEditSemesterId] = useState(null);
@@ -2886,16 +2890,39 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const showMsg = (m, dur = 4000) => { setMsg(m); setTimeout(() => setMsg(""), dur); };
 
   // ── Tambah semester baru ──
-  // Semester di backend bukan tabel tersendiri — diambil dari kolom tagihan.semester
-  // "Tambah semester" di sini hanya mendaftarkan nama ke daftar lokal untuk keperluan dropdown & duplikasi
-  const handleTambahSemester = () => {
+  // Semester di backend bukan tabel tersendiri — diambil dari kolom tagihan.semester.
+  // Endpoint POST /semester akan langsung membuat tagihan untuk semua santri (duplikat otomatis
+  // dari semester sebelumnya kalau diaktifkan) dan mengirim notifikasi WA — jadi semester ini
+  // benar-benar tersimpan di database, bukan cuma tampil sementara di layar.
+  const handleTambahSemester = async () => {
     const nama = formSem.semester.trim();
     if (!nama) { showMsg("❌ Nama semester wajib diisi!"); return; }
     if (semesters.find(s => s.semester === nama)) { showMsg("❌ Semester sudah ada!"); return; }
-    setSemesters(prev => [{ semester: nama, jumlah_tagihan: 0, jumlah_santri: 0, total_tagihan: 0 }, ...prev]);
-    showMsg("✅ Semester ditambahkan ke daftar!");
-    setFormSem({ semester: "", keterangan: "" });
-    setShowTambah(false);
+
+    if (dupOtomatis && !confirm(
+      `Buat semester "${nama}"?\n\n` +
+      `Tagihan akan otomatis diduplikasi dari ${semesterAsalTambah ? `semester "${semesterAsalTambah}"` : "semester terakhir"} ` +
+      `untuk SEMUA santri.\n${kirimNotifTambah ? "Notifikasi WA akan dikirim ke setiap wali." : "Notifikasi WA TIDAK akan dikirim."}\n\nLanjutkan?`
+    )) return;
+
+    setLoadingTambah(true);
+    try {
+      const res = await axios.post(`${API}/semester`, {
+        nama_semester: nama,
+        semester_asal: semesterAsalTambah || undefined,
+        duplikat_otomatis: dupOtomatis,
+        kirim_notif: kirimNotifTambah,
+      }, { headers });
+      showMsg(`✅ ${res.data.message}`, 6000);
+      setFormSem({ semester: "", keterangan: "" });
+      setSemesterAsalTambah("");
+      setShowTambah(false);
+      loadSemesters(true);
+      if (onRefreshSantri) onRefreshSantri();
+    } catch (e) {
+      showMsg("❌ " + (e.response?.data?.message || "Gagal menambah semester"));
+    }
+    setLoadingTambah(false);
   };
 
   // ── Hapus semester + semua tagihannya ──
@@ -2957,14 +2984,13 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   };
 
   // ── Preview tagihan dari semester asal ──
+  // Pakai endpoint khusus di backend (agregat semua santri), bukan cuma cek santri pertama
   const loadPreview = async (semesterAsal) => {
-    if (!semesterAsal || santri.length === 0) { setPreviewTagihan([]); return; }
+    if (!semesterAsal) { setPreviewTagihan([]); return; }
     setLoadingPreview(true);
     try {
-      // Ambil tagihan santri pertama sebagai contoh
-      const res = await axios.get(`${API}/tagihan/${santri[0].id}`, { headers });
-      const filtered = res.data.filter(t => t.semester === semesterAsal);
-      setPreviewTagihan(filtered);
+      const res = await axios.get(`${API}/semester/preview-duplikat`, { headers, params: { semester_asal: semesterAsal } });
+      setPreviewTagihan(res.data.template_global || []);
     } catch (e) { setPreviewTagihan([]); }
     setLoadingPreview(false);
   };
@@ -3080,7 +3106,45 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
                 />
               </div>
             </div>
-            <button style={{ ...btnGreen, padding: "8px 18px" }} onClick={handleTambahSemester}>💾 Simpan Semester</button>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 14px", borderRadius: 8, border: `2px solid ${dupOtomatis ? "#059669" : "#e5e7eb"}`, background: dupOtomatis ? "#ecfdf5" : "white", width: "fit-content" }}>
+                <input type="checkbox" checked={dupOtomatis} onChange={e => setDupOtomatis(e.target.checked)} />
+                <span style={{ fontWeight: 600, fontSize: 13 }}>🔁 Duplikat tagihan otomatis untuk semua santri</span>
+              </label>
+              {dupOtomatis && (
+                <div style={{ marginTop: 8 }}>
+                  <label style={lStyle}>Duplikat dari semester (opsional)</label>
+                  <select
+                    style={iStyle}
+                    value={semesterAsalTambah}
+                    onChange={e => setSemesterAsalTambah(e.target.value)}
+                  >
+                    <option value="">-- Otomatis (semester terakhir) --</option>
+                    {semesterNames.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>
+                    Tagihan (jenis & jumlah) tiap santri akan disalin persis dari semester ini. Status semua tagihan baru: BELUM BAYAR, dan wali akan otomatis dikirimi notifikasi WA.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 14px", borderRadius: 8, border: `2px solid ${kirimNotifTambah ? "#059669" : "#e5e7eb"}`, background: kirimNotifTambah ? "#ecfdf5" : "white", width: "fit-content" }}>
+                <input type="checkbox" checked={kirimNotifTambah} onChange={e => setKirimNotifTambah(e.target.checked)} />
+                <span style={{ fontWeight: 600, fontSize: 13 }}>📲 Kirim notifikasi WA ke wali santri</span>
+              </label>
+              {!kirimNotifTambah && (
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>
+                  Tagihan tetap dibuat, tapi wali tidak akan diberi tahu lewat WA. Cocok untuk uji coba atau saat mau mengecek data dulu sebelum mengumumkan.
+                </div>
+              )}
+            </div>
+
+            <button style={{ ...btnGreen, padding: "8px 18px", opacity: loadingTambah ? 0.7 : 1 }} onClick={handleTambahSemester} disabled={loadingTambah}>
+              {loadingTambah ? <><Spinner />Menyimpan...</> : "💾 Simpan Semester"}
+            </button>
           </div>
         )}
 
@@ -3182,12 +3246,12 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
               {dupForm.semesterAsal && (
                 <div style={{ background: "white", borderRadius: 8, padding: 12, marginBottom: 12, border: "1px solid #e5e7eb" }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#374151" }}>
-                    👁️ Preview Tagihan dari "{dupForm.semesterAsal}" (contoh dari santri pertama):
+                    👁️ Preview Jenis Tagihan Paling Umum dari "{dupForm.semesterAsal}":
                   </div>
                   {loadingPreview ? (
                     <div style={{ fontSize: 13, color: "#94a3b8" }}>Memuat preview...</div>
                   ) : previewTagihan.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#f59e0b" }}>⚠️ Tidak ada tagihan di semester ini untuk santri pertama. Pastikan semester asal sudah benar.</div>
+                    <div style={{ fontSize: 13, color: "#f59e0b" }}>⚠️ Tidak ada tagihan di semester ini. Pastikan semester asal sudah benar.</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {previewTagihan.map((t, i) => (
@@ -3654,7 +3718,12 @@ function RiwayatPembayaran({ headers }) {
     axios.get(`${API}/riwayat-pembayaran`, { headers, params: { bulan: bulanCetak } })
       .then(r => {
         const result = Array.isArray(r.data) ? r.data : [];
-        const sorted = [...result].sort((a, b) => new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar));
+        const sorted = [...result].sort((a, b) => {
+          const dt = new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
+          if (dt !== 0) return dt;
+          // Tanggal sama -> urut pakai id (mendekati urutan waktu bayar sebenarnya)
+          return (Number(a.id) || 0) - (Number(b.id) || 0);
+        });
         RiwayatPembayaran._cacheBulanan = { ...(RiwayatPembayaran._cacheBulanan || {}), [cacheKey]: sorted };
         setDataBulanan(sorted);
         setLoadingBulanan(false);
@@ -3686,7 +3755,9 @@ function RiwayatPembayaran({ headers }) {
   const sortedForGroup = [...filtered].sort((a, b) => {
     const dateCompare = new Date(b.tanggal_bayar) - new Date(a.tanggal_bayar);
     if (dateCompare !== 0) return dateCompare;
-    return (a.nama_siswa || "").localeCompare(b.nama_siswa || "", "id");
+    // Tanggal sama -> urut pakai id (mendekati urutan waktu bayar sebenarnya,
+    // karena tanggal_bayar cuma simpan tanggal, tidak simpan jam)
+    return (Number(b.id) || 0) - (Number(a.id) || 0);
   });
   const groupMap = {};
   const groups = [];
