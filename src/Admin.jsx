@@ -2854,6 +2854,12 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const [semesterAsalTambah, setSemesterAsalTambah] = useState(""); // kosong = otomatis ambil semester terakhir
   const [kirimNotifTambah, setKirimNotifTambah] = useState(true); // kirim WA ke wali saat semester baru dibuat
   const [loadingTambah, setLoadingTambah] = useState(false);
+  // Tagihan manual (dipakai kalau "Duplikat otomatis" dimatikan) — jenis+jumlah ini akan
+  // diterapkan ke SEMUA santri sebagai tagihan awal semester baru.
+  const [manualItems, setManualItems] = useState([{ jenis: "", jumlah: "" }]);
+  const addManualItem = () => setManualItems(prev => [...prev, { jenis: "", jumlah: "" }]);
+  const removeManualItem = (idx) => setManualItems(prev => prev.filter((_, i) => i !== idx));
+  const updateManualItem = (idx, field, value) => setManualItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
 
   // Edit semester
   const [editSemesterId, setEditSemesterId] = useState(null);
@@ -2899,23 +2905,55 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
     if (!nama) { showMsg("❌ Nama semester wajib diisi!"); return; }
     if (semesters.find(s => s.semester === nama)) { showMsg("❌ Semester sudah ada!"); return; }
 
-    if (dupOtomatis && !confirm(
-      `Buat semester "${nama}"?\n\n` +
-      `Tagihan akan otomatis diduplikasi dari ${semesterAsalTambah ? `semester "${semesterAsalTambah}"` : "semester terakhir"} ` +
-      `untuk SEMUA santri.\n${kirimNotifTambah ? "Notifikasi WA akan dikirim ke setiap wali." : "Notifikasi WA TIDAK akan dikirim."}\n\nLanjutkan?`
-    )) return;
+    // Kalau duplikat otomatis dimatikan, tagihan HARUS diisi manual (jenis + jumlah).
+    // Item ini akan diterapkan ke semua santri yang ada.
+    let tagihanBaru;
+    if (!dupOtomatis) {
+      const itemValid = manualItems
+        .map(it => ({ jenis: it.jenis.trim(), jumlah: Number(it.jumlah) }))
+        .filter(it => it.jenis && it.jumlah > 0);
+      if (itemValid.length === 0) {
+        showMsg("❌ Isi minimal 1 tagihan manual (jenis & jumlah) karena duplikat otomatis dimatikan!");
+        return;
+      }
+      if (!santri || santri.length === 0) {
+        showMsg("❌ Belum ada data santri untuk dibuatkan tagihan!");
+        return;
+      }
+      tagihanBaru = [];
+      for (const s of santri) {
+        for (const it of itemValid) {
+          tagihanBaru.push({ user_id: s.id, jenis: it.jenis, jumlah: it.jumlah });
+        }
+      }
+    }
+
+    const konfirmasiPesan = dupOtomatis
+      ? `Buat semester "${nama}"?\n\n` +
+        `Tagihan akan otomatis diduplikasi dari ${semesterAsalTambah ? `semester "${semesterAsalTambah}"` : "semester terakhir"} ` +
+        `untuk SEMUA santri.\n${kirimNotifTambah ? "Notifikasi WA akan dikirim ke setiap wali." : "Notifikasi WA TIDAK akan dikirim."}\n\nLanjutkan?`
+      : `Buat semester "${nama}"?\n\n` +
+        `${tagihanBaru.length} tagihan manual akan dibuat untuk ${santri.length} santri.\n` +
+        `${kirimNotifTambah ? "Notifikasi WA akan dikirim ke setiap wali." : "Notifikasi WA TIDAK akan dikirim."}\n\nLanjutkan?`;
+    if (!confirm(konfirmasiPesan)) return;
 
     setLoadingTambah(true);
     try {
-      const res = await axios.post(`${API}/semester`, {
+      const payload = {
         nama_semester: nama,
-        semester_asal: semesterAsalTambah || undefined,
         duplikat_otomatis: dupOtomatis,
         kirim_notif: kirimNotifTambah,
-      }, { headers });
+      };
+      if (dupOtomatis) {
+        payload.semester_asal = semesterAsalTambah || undefined;
+      } else {
+        payload.tagihan_baru = tagihanBaru;
+      }
+      const res = await axios.post(`${API}/semester`, payload, { headers });
       showMsg(`✅ ${res.data.message}`, 6000);
       setFormSem({ semester: "", keterangan: "" });
       setSemesterAsalTambah("");
+      setManualItems([{ jenis: "", jumlah: "" }]);
       setShowTambah(false);
       loadSemesters(true);
       if (onRefreshSantri) onRefreshSantri();
@@ -3125,6 +3163,37 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
                   </select>
                   <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>
                     Tagihan (jenis & jumlah) tiap santri akan disalin persis dari semester ini. Status semua tagihan baru: BELUM BAYAR, dan wali akan otomatis dikirimi notifikasi WA.
+                  </div>
+                </div>
+              )}
+              {!dupOtomatis && (
+                <div style={{ marginTop: 10, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontSize: 12, color: "#92400e", fontWeight: 600, marginBottom: 8 }}>
+                    ✍️ Isi Tagihan Manual (wajib diisi, akan diterapkan ke SEMUA santri — {santri?.length || 0} santri)
+                  </div>
+                  {manualItems.map((it, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                      <input
+                        style={{ ...iStyle, flex: 2 }}
+                        placeholder="Jenis, contoh: SPP"
+                        value={it.jenis}
+                        onChange={e => updateManualItem(idx, "jenis", e.target.value)}
+                      />
+                      <input
+                        style={{ ...iStyle, flex: 1 }}
+                        type="number"
+                        placeholder="Jumlah, contoh: 150000"
+                        value={it.jumlah}
+                        onChange={e => updateManualItem(idx, "jumlah", e.target.value)}
+                      />
+                      {manualItems.length > 1 && (
+                        <button type="button" style={{ ...btnRed, padding: "6px 10px", fontSize: 12 }} onClick={() => removeManualItem(idx)}>🗑️</button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" style={{ ...btnBlue, padding: "6px 14px", fontSize: 12 }} onClick={addManualItem}>➕ Tambah Jenis Tagihan</button>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                    Contoh: SPP - 150000, lalu tambahkan baris baru untuk Uang Gedung - 500000, dst. Semua santri akan mendapat tagihan yang sama.
                   </div>
                 </div>
               )}
