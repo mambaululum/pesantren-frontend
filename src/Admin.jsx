@@ -2861,6 +2861,45 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   const removeManualItem = (idx) => setManualItems(prev => prev.filter((_, i) => i !== idx));
   const updateManualItem = (idx, field, value) => setManualItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
 
+  // ── Checklist jenis tagihan yang sudah pernah ada (biar ga perlu ketik ulang) ──
+  const [sumberJenisSemester, setSumberJenisSemester] = useState("");
+  const [templateJenisTersedia, setTemplateJenisTersedia] = useState([]); // [{jenis, jumlah}]
+  const [loadingTemplateJenis, setLoadingTemplateJenis] = useState(false);
+
+  const loadTemplateJenis = async (sem) => {
+    if (!sem) { setTemplateJenisTersedia([]); return; }
+    setLoadingTemplateJenis(true);
+    try {
+      const res = await axios.get(`${API}/semester/preview-duplikat`, { headers, params: { semester_asal: sem } });
+      setTemplateJenisTersedia(res.data.template_global || []);
+    } catch (e) { setTemplateJenisTersedia([]); }
+    setLoadingTemplateJenis(false);
+  };
+
+  useEffect(() => { if (!dupOtomatis) loadTemplateJenis(sumberJenisSemester); }, [sumberJenisSemester, dupOtomatis]);
+
+  // Otomatis pilih semester terakhir sebagai sumber jenis, begitu form tambah dibuka
+  useEffect(() => {
+    if (showTambah && !dupOtomatis && !sumberJenisSemester && semesters.length > 0) {
+      setSumberJenisSemester(semesters[semesters.length - 1].semester);
+    }
+  }, [showTambah, dupOtomatis, semesters.length]);
+
+  const cocokJenis = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  // Centang / hapus centang jenis tagihan dari checklist -> masuk/keluar dari manualItems
+  const toggleJenisFromTemplate = (t) => {
+    setManualItems(prev => {
+      const idx = prev.findIndex(it => cocokJenis(it.jenis, t.jenis));
+      if (idx >= 0) {
+        const next = prev.filter((_, i) => i !== idx);
+        return next.length > 0 ? next : [{ jenis: "", jumlah: "" }];
+      }
+      const tanpaBarisKosong = prev.filter(it => it.jenis.trim() !== "" || it.jumlah !== "");
+      return [...tanpaBarisKosong, { jenis: t.jenis, jumlah: String(t.jumlah) }];
+    });
+  };
+
   // Edit semester
   const [editSemesterId, setEditSemesterId] = useState(null);
   const [editSemForm, setEditSemForm] = useState({ semester: "", keterangan: "" });
@@ -2954,6 +2993,8 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
       setFormSem({ semester: "", keterangan: "" });
       setSemesterAsalTambah("");
       setManualItems([{ jenis: "", jumlah: "" }]);
+      setSumberJenisSemester("");
+      setTemplateJenisTersedia([]);
       setShowTambah(false);
       loadSemesters(true);
       if (onRefreshSantri) onRefreshSantri();
@@ -3171,26 +3212,85 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
                   <div style={{ fontSize: 12, color: "#92400e", fontWeight: 600, marginBottom: 8 }}>
                     ✍️ Isi Tagihan Manual (wajib diisi, akan diterapkan ke SEMUA santri — {santri?.length || 0} santri)
                   </div>
-                  {manualItems.map((it, idx) => (
-                    <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                      <input
-                        style={{ ...iStyle, flex: 2 }}
-                        placeholder="Jenis, contoh: SPP"
-                        value={it.jenis}
-                        onChange={e => updateManualItem(idx, "jenis", e.target.value)}
-                      />
-                      <input
-                        style={{ ...iStyle, flex: 1 }}
-                        type="number"
-                        placeholder="Jumlah, contoh: 150000"
-                        value={it.jumlah}
-                        onChange={e => updateManualItem(idx, "jumlah", e.target.value)}
-                      />
-                      {manualItems.length > 1 && (
-                        <button type="button" style={{ ...btnRed, padding: "6px 10px", fontSize: 12 }} onClick={() => removeManualItem(idx)}>🗑️</button>
-                      )}
+
+                  {/* ── Checklist jenis tagihan yang sudah pernah ada ── */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={lStyle}>Pilih dari jenis tagihan yang sudah ada (opsional)</label>
+                    <select
+                      style={iStyle}
+                      value={sumberJenisSemester}
+                      onChange={e => setSumberJenisSemester(e.target.value)}
+                    >
+                      <option value="">-- Pilih semester untuk lihat daftar jenis tagihan --</option>
+                      {semesterNames.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3, marginBottom: 8 }}>
+                      Tinggal centang jenis tagihan yang mau dipakai lagi (SPP, Uang Gedung, dst) — jumlahnya bisa diubah kalau perlu.
                     </div>
-                  ))}
+
+                    {loadingTemplateJenis && (
+                      <div style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Spinner size={14} color="#94a3b8" /> Memuat daftar jenis tagihan...
+                      </div>
+                    )}
+
+                    {!loadingTemplateJenis && sumberJenisSemester && templateJenisTersedia.length === 0 && (
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>Tidak ada tagihan di semester ini.</div>
+                    )}
+
+                    {!loadingTemplateJenis && templateJenisTersedia.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "white", borderRadius: 8, border: "1px solid #e5e7eb", padding: 10 }}>
+                        {templateJenisTersedia.map((t, i) => {
+                          const idx = manualItems.findIndex(it => cocokJenis(it.jenis, t.jenis));
+                          const checked = idx >= 0;
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", flex: 1 }}>
+                                <input type="checkbox" checked={checked} onChange={() => toggleJenisFromTemplate(t)} />
+                                <span style={{ fontSize: 13, fontWeight: 600 }}>{t.jenis}</span>
+                              </label>
+                              {checked && (
+                                <input
+                                  style={{ ...iStyle, width: 130, padding: "6px 10px" }}
+                                  type="number"
+                                  value={manualItems[idx].jumlah}
+                                  onChange={e => updateManualItem(idx, "jumlah", e.target.value)}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Tambah jenis tagihan baru yang belum ada di daftar ── */}
+                  <div style={{ fontSize: 12, color: "#92400e", fontWeight: 600, marginBottom: 8 }}>
+                    ➕ Atau tambah jenis tagihan baru (custom)
+                  </div>
+                  {manualItems
+                    .map((it, idx) => ({ it, idx }))
+                    .filter(({ it }) => !templateJenisTersedia.some(t => cocokJenis(t.jenis, it.jenis)))
+                    .map(({ it, idx }) => (
+                      <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                        <input
+                          style={{ ...iStyle, flex: 2 }}
+                          placeholder="Jenis, contoh: SPP"
+                          value={it.jenis}
+                          onChange={e => updateManualItem(idx, "jenis", e.target.value)}
+                        />
+                        <input
+                          style={{ ...iStyle, flex: 1 }}
+                          type="number"
+                          placeholder="Jumlah, contoh: 150000"
+                          value={it.jumlah}
+                          onChange={e => updateManualItem(idx, "jumlah", e.target.value)}
+                        />
+                        {manualItems.length > 1 && (
+                          <button type="button" style={{ ...btnRed, padding: "6px 10px", fontSize: 12 }} onClick={() => removeManualItem(idx)}>🗑️</button>
+                        )}
+                      </div>
+                    ))}
                   <button type="button" style={{ ...btnBlue, padding: "6px 14px", fontSize: 12 }} onClick={addManualItem}>➕ Tambah Jenis Tagihan</button>
                   <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
                     Contoh: SPP - 150000, lalu tambahkan baris baru untuk Uang Gedung - 500000, dst. Semua santri akan mendapat tagihan yang sama.
