@@ -1784,7 +1784,6 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
   const [rekapData, setRekapData] = useState({}); // { userId: [tagihan...] }
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [rekapMsg, setRekapMsg] = useState("");
-  const [resettingLunas, setResettingLunas] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [searchRekap, setSearchRekap] = useState("");
   const [filterRekap, setFilterRekap] = useState("semua"); // "semua"|"lunas"|"belum"
@@ -1924,21 +1923,6 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
     } catch (e) { setRekapMsg("❌ Gagal mengubah status tagihan"); }
     setTogglingId(null);
     setTimeout(() => setRekapMsg(""), 3000);
-  };
-
-  // Reset lunas SEMUA tagihan seluruh santri
-  const handleResetLunasSemuaSantri = async () => {
-    if (!confirm("Reset status lunas SEMUA tagihan seluruh santri?\n\nSemua tagihan yang statusnya 'Lunas' akan dikembalikan ke 'Belum Bayar'. Riwayat cicilan juga terhapus.\n\nTindakan ini tidak dapat dibatalkan!")) return;
-    setResettingLunas(true);
-    try {
-      const r = await axios.post(`${API}/semester/reset`, {}, { headers });
-      setRekapMsg("✅ " + (r.data.message || "Semua tagihan berhasil direset ke belum bayar!"));
-      setRekapData({});
-      await loadSemuaRekap();
-      if (onRefreshSantri) onRefreshSantri();
-    } catch (e) { setRekapMsg("❌ " + (e.response?.data?.message || "Gagal reset semua tagihan")); }
-    setResettingLunas(false);
-    setTimeout(() => setRekapMsg(""), 5000);
   };
 
   // Handle tambah tagihan massal
@@ -2518,14 +2502,6 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
             )}
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <button style={{ ...btnBlue, padding: "7px 14px", fontSize: 12, opacity: loadingRekap ? 0.6 : 1 }} onClick={() => { setRekapData({}); loadSemuaRekap(); }} disabled={loadingRekap}>🔄 Refresh</button>
-              <button
-                style={{ background: "#ef4444", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: resettingLunas ? 0.6 : 1 }}
-                onClick={handleResetLunasSemuaSantri}
-                disabled={resettingLunas}
-                title="Reset status lunas semua tagihan seluruh santri menjadi belum bayar"
-              >
-                {resettingLunas ? "⏳ Mereset..." : "🔄 Reset Lunas Semua"}
-              </button>
             </div>
           </div>
 
