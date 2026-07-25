@@ -1789,6 +1789,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
   const [searchRekap, setSearchRekap] = useState("");
   const [filterRekap, setFilterRekap] = useState("semua"); // "semua"|"lunas"|"belum"
   const [filterJenis, setFilterJenis] = useState(""); // "" = semua jenis
+  const [filterSemester, setFilterSemester] = useState(""); // "" = semua semester
   const [viewMode, setViewMode] = useState("per_jenis"); // "per_santri" | "per_jenis"
 
   const refreshSemesters = async () => {
@@ -1998,16 +1999,24 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
     return true;
   });
 
-  // Kumpulkan semua jenis tagihan unik dari semua santri
+  // Terapkan filter semester lebih dulu (kalau dipilih) sebelum dikelompokkan per jenis,
+  // supaya "sudah bayar" / "belum bayar" dihitung khusus untuk semester tsb saja.
+  const rekapDataTersaring = filterSemester
+    ? Object.fromEntries(
+        Object.entries(rekapData).map(([uid, list]) => [uid, list.filter(t => (t.semester || "") === filterSemester)])
+      )
+    : rekapData;
+
+  // Kumpulkan semua jenis tagihan unik dari semua santri (mengikuti filter semester)
   const allJenis = [...new Set(
-    Object.values(rekapData).flat().map(t => t.jenis).filter(Boolean)
+    Object.values(rekapDataTersaring).flat().map(t => t.jenis).filter(Boolean)
   )].sort();
 
   // Data per jenis: untuk setiap jenis, siapa yang punya tagihan itu dan statusnya
   const rekapPerJenis = allJenis.map(jenis => {
     const list = [];
     santri.forEach(s => {
-      const tg = (rekapData[s.id] || []).filter(t => t.jenis === jenis);
+      const tg = (rekapDataTersaring[s.id] || []).filter(t => t.jenis === jenis);
       if (tg.length > 0) {
         const sudahBayar = tg.every(t => t.status === "lunas");
         const cicilanAda = tg.some(t => t.sudah_dicicil > 0 && t.status !== "lunas");
@@ -2496,10 +2505,16 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
               </>
             )}
             {viewMode === "per_jenis" && (
-              <select style={{ ...iStyle, maxWidth: 280, padding: "8px 12px", fontSize: 13 }} value={filterJenis} onChange={e => setFilterJenis(e.target.value)}>
-                <option value="">-- Semua Jenis Tagihan --</option>
-                {allJenis.map((j, i) => <option key={i} value={j}>{j}</option>)}
-              </select>
+              <>
+                <select style={{ ...iStyle, maxWidth: 280, padding: "8px 12px", fontSize: 13 }} value={filterJenis} onChange={e => setFilterJenis(e.target.value)}>
+                  <option value="">-- Semua Jenis Tagihan --</option>
+                  {allJenis.map((j, i) => <option key={i} value={j}>{j}</option>)}
+                </select>
+                <select style={{ ...iStyle, maxWidth: 220, padding: "8px 12px", fontSize: 13 }} value={filterSemester} onChange={e => { setFilterSemester(e.target.value); setFilterJenis(""); }}>
+                  <option value="">📅 -- Semua Semester --</option>
+                  {semesters.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                </select>
+              </>
             )}
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <button style={{ ...btnBlue, padding: "7px 14px", fontSize: 12, opacity: loadingRekap ? 0.6 : 1 }} onClick={() => { setRekapData({}); loadSemuaRekap(); }} disabled={loadingRekap}>🔄 Refresh</button>
