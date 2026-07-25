@@ -113,7 +113,7 @@ function AdminDashboard({ admin, onLogout }) {
   const menuRef = useRef(null);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
-  const allMenuKeys = ["rekap","santri","tagihan","cicilan","bayar_umum","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman"];
+  const allMenuKeys = ["rekap","santri","tagihan","cicilan","bayar_umum","tambah_santri","semester","pengingat","riwayat_bayar","riwayat_notif","pengumuman","keuangan"];
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
@@ -221,6 +221,7 @@ function AdminDashboard({ admin, onLogout }) {
     { key: "riwayat_bayar", label: "📜 Riwayat Bayar" },
     { key: "riwayat_notif", label: "📨 Riwayat Notif WA" },
     { key: "pengumuman", label: "📣 Pengumuman" },
+    { key: "keuangan", label: "📒 Buku Kas" },
   ];
 
   return (
@@ -324,6 +325,7 @@ function AdminDashboard({ admin, onLogout }) {
 {menu === "riwayat_bayar" && <RiwayatPembayaran headers={headers} />}
         {menu === "riwayat_notif" && <RiwayatNotif headers={headers} />}
         {menu === "pengumuman" && <Pengumuman santri={santri} headers={headers} />}
+        {menu === "keuangan" && <BukuKas headers={headers} />}
       </div>
     </div>
   );
@@ -4512,6 +4514,186 @@ function Pengumuman({ santri, headers }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// BUKU KAS — catat tanggal, debit, kredit, saldo berjalan & catatan
+// ============================================================
+function BukuKas({ headers }) {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ tanggal: todayStr, debit: "", kredit: "", catatan: "" });
+  const [deletingId, setDeletingId] = useState(null);
+  const [searchCatatan, setSearchCatatan] = useState("");
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/keuangan`, { headers });
+      setEntries(res.data || []);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const resetForm = () => {
+    setForm({ tanggal: todayStr, debit: "", kredit: "", catatan: "" });
+    setEditingId(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.tanggal) { setMsg("❌ Tanggal wajib diisi!"); return; }
+    if (!Number(form.debit) && !Number(form.kredit)) { setMsg("❌ Isi salah satu: Debit atau Kredit!"); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        tanggal: form.tanggal,
+        debit: Number(form.debit) || 0,
+        kredit: Number(form.kredit) || 0,
+        catatan: form.catatan,
+      };
+      if (editingId) {
+        await axios.put(`${API}/keuangan/${editingId}`, payload, { headers });
+        setMsg("✅ Catatan berhasil diupdate");
+      } else {
+        await axios.post(`${API}/keuangan`, payload, { headers });
+        setMsg("✅ Catatan berhasil ditambahkan");
+      }
+      resetForm();
+      loadData();
+    } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
+    setSaving(false);
+    setTimeout(() => setMsg(""), 4000);
+  };
+
+  const handleEdit = (row) => {
+    setEditingId(row.id);
+    setForm({
+      tanggal: row.tanggal?.split("T")[0] || todayStr,
+      debit: row.debit ? String(row.debit) : "",
+      kredit: row.kredit ? String(row.kredit) : "",
+      catatan: row.catatan || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Hapus catatan ini? Saldo berjalan akan dihitung ulang otomatis.")) return;
+    setDeletingId(id);
+    try {
+      await axios.delete(`${API}/keuangan/${id}`, { headers });
+      setMsg("✅ Catatan dihapus");
+      if (editingId === id) resetForm();
+      loadData();
+    } catch (e) { setMsg("❌ Gagal menghapus"); }
+    setDeletingId(null);
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  const totalDebit = entries.reduce((a, b) => a + Number(b.debit || 0), 0);
+  const totalKredit = entries.reduce((a, b) => a + Number(b.kredit || 0), 0);
+  // entries diurutkan terbaru dulu dari backend, jadi saldo akhir ada di entri paling atas
+  const saldoAkhir = entries.length > 0 ? entries[0].saldo : 0;
+
+  const entriesTersaring = entries.filter(e =>
+    (e.catatan || "").toLowerCase().includes(searchCatatan.toLowerCase())
+  );
+
+  return (
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📒 Buku Kas</div>
+      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+
+      {/* RINGKASAN */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+        <div style={{ background: "white", borderRadius: 14, padding: "14px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>💵 Total Debit</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#059669", marginTop: 4 }}>{formatRupiah(totalDebit)}</div>
+        </div>
+        <div style={{ background: "white", borderRadius: 14, padding: "14px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>💸 Total Kredit</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#dc2626", marginTop: 4 }}>{formatRupiah(totalKredit)}</div>
+        </div>
+        <div style={{ background: "white", borderRadius: 14, padding: "14px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>🏦 Saldo Akhir</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: saldoAkhir >= 0 ? "#059669" : "#dc2626", marginTop: 4 }}>{formatRupiah(saldoAkhir)}</div>
+        </div>
+      </div>
+
+      {/* FORM TAMBAH / EDIT */}
+      <div style={{ background: "white", borderRadius: 14, padding: 20, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontWeight: 700, marginBottom: 14 }}>{editingId ? "✏️ Edit Catatan" : "➕ Tambah Catatan Baru"}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+          <div>
+            <label style={lStyle}>Tanggal</label>
+            <input type="date" style={iStyle} value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Debit / Pemasukan (Rp)</label>
+            <input type="number" style={iStyle} placeholder="0" value={form.debit} onChange={e => setForm({ ...form, debit: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Kredit / Pengeluaran (Rp)</label>
+            <input type="number" style={iStyle} placeholder="0" value={form.kredit} onChange={e => setForm({ ...form, kredit: e.target.value })} />
+          </div>
+          <div>
+            <label style={lStyle}>Catatan</label>
+            <input style={iStyle} placeholder="contoh: Beli ATK kantor" value={form.catatan} onChange={e => setForm({ ...form, catatan: e.target.value })} />
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>⚠️ Isi salah satu saja: Debit (uang masuk) atau Kredit (uang keluar).</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={{ ...btnGreen, flex: 1, opacity: saving ? 0.7 : 1 }} onClick={handleSubmit} disabled={saving}>
+            {saving ? <><Spinner />Menyimpan...</> : editingId ? "💾 Simpan Perubahan" : "➕ Tambah Catatan"}
+          </button>
+          {editingId && (
+            <button style={{ ...btnRed, flex: "0 0 auto" }} onClick={resetForm}>❌ Batal</button>
+          )}
+        </div>
+      </div>
+
+      {/* DAFTAR CATATAN */}
+      <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div style={{ fontWeight: 700 }}>📋 Riwayat Buku Kas</div>
+          <input style={{ ...iStyle, maxWidth: 220, padding: "8px 12px", fontSize: 13 }} placeholder="🔍 Cari catatan..." value={searchCatatan} onChange={e => setSearchCatatan(e.target.value)} />
+        </div>
+
+        {loading ? (
+          <LoadingBarData />
+        ) : entriesTersaring.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 14 }}>Belum ada catatan keuangan.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {entriesTersaring.map(row => (
+              <div key={row.id} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #f1f5f9", background: editingId === row.id ? "#f0fdf4" : "white" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                    {row.catatan && <div style={{ fontSize: 13, marginTop: 2 }}>{row.catatan}</div>}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    {Number(row.debit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>+{formatRupiah(row.debit)}</div>}
+                    {Number(row.kredit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#dc2626" }}>-{formatRupiah(row.kredit)}</div>}
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Saldo: {formatRupiah(row.saldo)}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                  <button style={{ ...btnBlue, padding: "5px 10px", fontSize: 12 }} onClick={() => handleEdit(row)}>✏️</button>
+                  <button style={{ ...btnRed, padding: "5px 10px", fontSize: 12, opacity: deletingId === row.id ? 0.6 : 1 }} onClick={() => handleDelete(row.id)} disabled={deletingId === row.id}>🗑️</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
