@@ -344,10 +344,36 @@ const loadScript = (src) => new Promise((resolve, reject) => {
 });
 
 // Helper: ambil canvas dari elemen DOM
+// Di-capture dengan lebar TETAP (ala tampilan desktop, 800px) supaya hasil PDF/JPG
+// tetap rapi walau tombol export dipencet dari HP dengan layar sempit.
+// Tanpa ini, html2canvas hanya memotret selebar layar HP → kolom kanan tabel
+// (Saldo, angka Rupiah) ikut terpotong karena kontennya meluber ke kanan.
 const getCanvas = async (elId) => {
   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
   const el = document.getElementById(elId);
-  return window.html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+  const FIXED_WIDTH = 800; // px, cukup lega untuk tabel 5 kolom
+
+  const clone = el.cloneNode(true);
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.top = "0";
+  wrapper.style.left = "-99999px"; // dirender browser tapi disembunyikan dari layar
+  wrapper.style.width = FIXED_WIDTH + "px";
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+  clone.style.width = FIXED_WIDTH + "px";
+
+  try {
+    return await window.html2canvas(clone, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      logging: false,
+      windowWidth: FIXED_WIDTH,
+    });
+  } finally {
+    document.body.removeChild(wrapper);
+  }
 };
 
 // Helper: export canvas ke JPG download
@@ -4768,7 +4794,14 @@ function BukuKas({ headers }) {
               {entriesBulanIniAsc.length === 0 ? (
                 <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 13 }}>Tidak ada transaksi di bulan {namaBulanTahun}.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "36%" }} />
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "16%" }} />
+                  </colgroup>
                   <thead>
                     <tr style={{ background: "#f1f5f9" }}>
                       <th style={{ textAlign: "left", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Tanggal</th>
@@ -4782,10 +4815,10 @@ function BukuKas({ headers }) {
                     {entriesBulanIniAsc.map(row => (
                       <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={{ padding: "7px 6px", whiteSpace: "nowrap" }}>{new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                        <td style={{ padding: "7px 6px" }}>{row.catatan || "—"}</td>
-                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#059669", fontWeight: 600 }}>{Number(row.debit) > 0 ? formatRupiah(row.debit) : "—"}</td>
-                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#dc2626", fontWeight: 600 }}>{Number(row.kredit) > 0 ? formatRupiah(row.kredit) : "—"}</td>
-                        <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 600 }}>{formatRupiah(row.saldo)}</td>
+                        <td style={{ padding: "7px 6px", wordBreak: "break-word" }}>{row.catatan || "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#059669", fontWeight: 600, whiteSpace: "nowrap" }}>{Number(row.debit) > 0 ? formatRupiah(row.debit) : "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#dc2626", fontWeight: 600, whiteSpace: "nowrap" }}>{Number(row.kredit) > 0 ? formatRupiah(row.kredit) : "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }}>{formatRupiah(row.saldo)}</td>
                       </tr>
                     ))}
                   </tbody>
