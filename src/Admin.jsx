@@ -4794,14 +4794,8 @@ function BukuKas({ headers }) {
               {entriesBulanIniAsc.length === 0 ? (
                 <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 13 }}>Tidak ada transaksi di bulan {namaBulanTahun}.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col style={{ width: "16%" }} />
-                    <col style={{ width: "36%" }} />
-                    <col style={{ width: "16%" }} />
-                    <col style={{ width: "16%" }} />
-                    <col style={{ width: "16%" }} />
-                  </colgroup>
+                <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 560 }}>
                   <thead>
                     <tr style={{ background: "#f1f5f9" }}>
                       <th style={{ textAlign: "left", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Tanggal</th>
@@ -4831,6 +4825,7 @@ function BukuKas({ headers }) {
                     </tr>
                   </tfoot>
                 </table>
+                </div>
               )}
             </div>
           )}
