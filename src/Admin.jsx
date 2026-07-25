@@ -4524,6 +4524,7 @@ function Pengumuman({ santri, headers }) {
 // ============================================================
 function BukuKas({ headers }) {
   const todayStr = new Date().toISOString().split("T")[0];
+  const bulanIniStr = todayStr.slice(0, 7); // "YYYY-MM"
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -4532,6 +4533,9 @@ function BukuKas({ headers }) {
   const [form, setForm] = useState({ tanggal: todayStr, debit: "", kredit: "", catatan: "" });
   const [deletingId, setDeletingId] = useState(null);
   const [searchCatatan, setSearchCatatan] = useState("");
+  const [subTab, setSubTab] = useState("riwayat"); // "riwayat" | "rekap"
+  const [bulanFilter, setBulanFilter] = useState(bulanIniStr);
+  const [exportingRekap, setExportingRekap] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -4607,6 +4611,21 @@ function BukuKas({ headers }) {
     (e.catatan || "").toLowerCase().includes(searchCatatan.toLowerCase())
   );
 
+  // ── Rekap per bulan ──────────────────────────────────────
+  // entries urut terbaru dulu, jadi filter per bulan otomatis ikut urutan itu
+  const entriesBulanIni = entries.filter(e => (e.tanggal || "").slice(0, 7) === bulanFilter);
+  const totalDebitBulan = entriesBulanIni.reduce((a, b) => a + Number(b.debit || 0), 0);
+  const totalKreditBulan = entriesBulanIni.reduce((a, b) => a + Number(b.kredit || 0), 0);
+  // Saldo akhir bulan = saldo di transaksi terakhir bulan itu. Kalau bulan itu kosong,
+  // pakai saldo transaksi terakhir SEBELUM bulan tsb (saldo carry-over dari bulan sebelumnya).
+  const saldoAkhirBulan = entriesBulanIni.length > 0
+    ? entriesBulanIni[0].saldo
+    : (entries.find(e => (e.tanggal || "") < `${bulanFilter}-01`)?.saldo || 0);
+  const saldoAwalBulan = saldoAkhirBulan - totalDebitBulan + totalKreditBulan;
+  // Urutkan kronologis (tanggal lama -> baru) khusus untuk tampilan cetak
+  const entriesBulanIniAsc = [...entriesBulanIni].reverse();
+  const namaBulanTahun = new Date(`${bulanFilter}-01T00:00:00`).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📒 Buku Kas</div>
@@ -4660,41 +4679,130 @@ function BukuKas({ headers }) {
         </div>
       </div>
 
-      {/* DAFTAR CATATAN */}
-      <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <div style={{ fontWeight: 700 }}>📋 Riwayat Buku Kas</div>
-          <input style={{ ...iStyle, maxWidth: 220, padding: "8px 12px", fontSize: 13 }} placeholder="🔍 Cari catatan..." value={searchCatatan} onChange={e => setSearchCatatan(e.target.value)} />
-        </div>
+      {/* TAB SWITCH: Riwayat / Rekap Bulanan */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+        <button onClick={() => setSubTab("riwayat")} style={{ padding: "8px 16px", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontWeight: subTab === "riwayat" ? 700 : 500, background: subTab === "riwayat" ? "#059669" : "#e2e8f0", color: subTab === "riwayat" ? "white" : "#475569" }}>📋 Riwayat</button>
+        <button onClick={() => setSubTab("rekap")} style={{ padding: "8px 16px", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", fontWeight: subTab === "rekap" ? 700 : 500, background: subTab === "rekap" ? "#059669" : "#e2e8f0", color: subTab === "rekap" ? "white" : "#475569" }}>📊 Rekap Bulanan</button>
+      </div>
 
-        {loading ? (
-          <LoadingBarData />
-        ) : entriesTersaring.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 14 }}>Belum ada catatan keuangan.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {entriesTersaring.map(row => (
-              <div key={row.id} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #f1f5f9", background: editingId === row.id ? "#f0fdf4" : "white" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</div>
-                    {row.catatan && <div style={{ fontSize: 13, marginTop: 2 }}>{row.catatan}</div>}
+      {/* ══════════════ TAB RIWAYAT (SEMUA CATATAN) ══════════════ */}
+      {subTab === "riwayat" && (
+        <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <div style={{ fontWeight: 700 }}>📋 Riwayat Buku Kas</div>
+            <input style={{ ...iStyle, maxWidth: 220, padding: "8px 12px", fontSize: 13 }} placeholder="🔍 Cari catatan..." value={searchCatatan} onChange={e => setSearchCatatan(e.target.value)} />
+          </div>
+
+          {loading ? (
+            <LoadingBarData />
+          ) : entriesTersaring.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 14 }}>Belum ada catatan keuangan.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {entriesTersaring.map(row => (
+                <div key={row.id} style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #f1f5f9", background: editingId === row.id ? "#f0fdf4" : "white" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                      {row.catatan && <div style={{ fontSize: 13, marginTop: 2 }}>{row.catatan}</div>}
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      {Number(row.debit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>+{formatRupiah(row.debit)}</div>}
+                      {Number(row.kredit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#dc2626" }}>-{formatRupiah(row.kredit)}</div>}
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Saldo: {formatRupiah(row.saldo)}</div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    {Number(row.debit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>+{formatRupiah(row.debit)}</div>}
-                    {Number(row.kredit) > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "#dc2626" }}>-{formatRupiah(row.kredit)}</div>}
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Saldo: {formatRupiah(row.saldo)}</div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                    <button style={{ ...btnBlue, padding: "5px 10px", fontSize: 12 }} onClick={() => handleEdit(row)}>✏️</button>
+                    <button style={{ ...btnRed, padding: "5px 10px", fontSize: 12, opacity: deletingId === row.id ? 0.6 : 1 }} onClick={() => handleDelete(row.id)} disabled={deletingId === row.id}>🗑️</button>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
-                  <button style={{ ...btnBlue, padding: "5px 10px", fontSize: 12 }} onClick={() => handleEdit(row)}>✏️</button>
-                  <button style={{ ...btnRed, padding: "5px 10px", fontSize: 12, opacity: deletingId === row.id ? 0.6 : 1 }} onClick={() => handleDelete(row.id)} disabled={deletingId === row.id}>🗑️</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════ TAB REKAP BULANAN (CETAK PDF) ══════════════ */}
+      {subTab === "rekap" && (
+        <div>
+          {/* Toolbar: pilih bulan + tombol cetak */}
+          <div style={{ background: "white", borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <label style={lStyle}>Pilih Bulan</label>
+              <input type="month" style={{ ...iStyle, padding: "8px 12px", fontSize: 13 }} value={bulanFilter} onChange={e => setBulanFilter(e.target.value)} />
+            </div>
+            <div style={{ marginLeft: "auto" }}>
+              <TombolExport elId="cetak-rekap-kas" filename={`Rekap-Buku-Kas-${bulanFilter}`} exporting={exportingRekap} setExporting={setExportingRekap} disabled={loading} />
+            </div>
+          </div>
+
+          {loading ? (
+            <LoadingBarData />
+          ) : (
+            /* Area yang di-capture jadi PDF/JPG */
+            <div id="cetak-rekap-kas" style={{ background: "white", borderRadius: 14, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <HeaderLaporan subtitle={`Rekap Buku Kas · ${namaBulanTahun}`} />
+
+              {/* Ringkasan bulan */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+                <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>Saldo Awal</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>{formatRupiah(saldoAwalBulan)}</div>
+                </div>
+                <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>Total Debit</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2, color: "#059669" }}>{formatRupiah(totalDebitBulan)}</div>
+                </div>
+                <div style={{ background: "#fef2f2", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#dc2626", fontWeight: 600 }}>Total Kredit</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2, color: "#dc2626" }}>{formatRupiah(totalKreditBulan)}</div>
+                </div>
+                <div style={{ background: "#eff6ff", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 600 }}>Saldo Akhir</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2, color: "#1d4ed8" }}>{formatRupiah(saldoAkhirBulan)}</div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Tabel transaksi bulan itu, urut kronologis */}
+              {entriesBulanIniAsc.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#94a3b8", padding: 24, fontSize: 13 }}>Tidak ada transaksi di bulan {namaBulanTahun}.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      <th style={{ textAlign: "left", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Tanggal</th>
+                      <th style={{ textAlign: "left", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Catatan</th>
+                      <th style={{ textAlign: "right", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Debit</th>
+                      <th style={{ textAlign: "right", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Kredit</th>
+                      <th style={{ textAlign: "right", padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entriesBulanIniAsc.map(row => (
+                      <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "7px 6px", whiteSpace: "nowrap" }}>{new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td style={{ padding: "7px 6px" }}>{row.catatan || "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#059669", fontWeight: 600 }}>{Number(row.debit) > 0 ? formatRupiah(row.debit) : "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", color: "#dc2626", fontWeight: 600 }}>{Number(row.kredit) > 0 ? formatRupiah(row.kredit) : "—"}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 600 }}>{formatRupiah(row.saldo)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
+                      <td colSpan={2} style={{ padding: "8px 6px" }}>Total</td>
+                      <td style={{ padding: "8px 6px", textAlign: "right", color: "#059669" }}>{formatRupiah(totalDebitBulan)}</td>
+                      <td style={{ padding: "8px 6px", textAlign: "right", color: "#dc2626" }}>{formatRupiah(totalKreditBulan)}</td>
+                      <td style={{ padding: "8px 6px", textAlign: "right" }}>{formatRupiah(saldoAkhirBulan)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
