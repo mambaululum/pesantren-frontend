@@ -973,58 +973,26 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const handleSimpanBayar = async (jumlahInput, jumlahBayar, kelebihan, keterangan, kirimWA) => {
     setLoading(true);
     try {
-      // Kalau ini skenario lunas (termasuk kelebihan bayar), pesan WA akan
-      // dikirim lewat /kirim-wa-kelebihan di bawah — jadi notif otomatis dari
-      // /pembayaran dimatikan dulu supaya wali tidak terima 2 pesan sekaligus.
-      const isLunasScenario = jumlahBayar >= sisaTagihan;
+      // Satu pesan WA saja: /pembayaran yang membuat & mengirim kwitansi
+      // (lengkap dengan info kelebihan/uang jajan kalau ada), jadi tidak
+      // perlu lagi endpoint konfirmasi terpisah.
       const res = await axios.post(`${API}/pembayaran`, {
         tagihan_id: selectedTagihan.id,
         jumlah_bayar: jumlahBayar,
         tanggal_bayar: form.tanggal_bayar,
         keterangan: keterangan,
-        kirim_notif: isLunasScenario ? false : kirimWA,
+        kelebihan: kelebihan || 0,
+        kirim_notif: kirimWA,
       }, { headers });
 
       // Simpan data tagihan sebelum di-null
       const tagihanSnapshot = { ...selectedTagihan };
 
-      // Kirim WA jika ada kelebihan dan admin pilih kirim
-      if (kelebihan > 0 && kirimWA && selectedUser?.no_hp) {
-        try {
-          await axios.post(`${API}/kirim-wa-kelebihan`, {
-            no_hp: selectedUser.no_hp,
-            nama_wali: selectedUser.nama,
-            nama_siswa: selectedUser.nama_siswa,
-            jumlah_bayar: jumlahInput,
-            jumlah_tagihan: Number(selectedTagihan.jumlah),
-            jenis_tagihan: tagihanSnapshot.jenis,
-            kelebihan,
-            keterangan,
-            user_id: selectedUser.id,
-          }, { headers });
-        } catch (e) { /* WA kelebihan gagal, lanjut */ }
-      }
-
+      const infoWA = kirimWA && selectedUser?.no_hp ? " 📲 Kwitansi masuk antrian Fonnte, terkirim 1-3 menit." : "";
       if (kelebihan > 0) {
-        setMsg(`✅ Tagihan lunas! Kelebihan ${formatRupiah(kelebihan)} dicatat.${kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""}`);
-      } else if (res.data.lunas && kirimWA && selectedUser?.no_hp) {
-        // Bayar pas lunas — kirim konfirmasi WA
-        try {
-          await axios.post(`${API}/kirim-wa-kelebihan`, {
-            no_hp: selectedUser.no_hp,
-            nama_wali: selectedUser.nama,
-            nama_siswa: selectedUser.nama_siswa,
-            jumlah_bayar: jumlahInput,
-            jumlah_tagihan: Number(selectedTagihan.jumlah),
-            jenis_tagihan: selectedTagihan.jenis,
-            kelebihan: 0,
-            keterangan: keterangan || "",
-            user_id: selectedUser.id,
-          }, { headers });
-        } catch (e) { /* WA konfirmasi gagal, lanjut */ }
-        setMsg("✅ " + res.data.message + " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit.");
+        setMsg(`✅ Tagihan lunas! Kelebihan ${formatRupiah(kelebihan)} dicatat.${infoWA}`);
       } else {
-        setMsg("✅ " + res.data.message + (kirimWA && selectedUser?.no_hp ? " 📲 Pesan masuk antrian Fonnte, terkirim 1-3 menit." : ""));
+        setMsg("✅ " + res.data.message + infoWA);
       }
 
       const newCicilan = { id: res.data.id || Date.now(), jumlah_bayar: jumlahBayar, tanggal_bayar: form.tanggal_bayar, keterangan };
