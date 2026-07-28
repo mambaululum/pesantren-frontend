@@ -973,12 +973,16 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const handleSimpanBayar = async (jumlahInput, jumlahBayar, kelebihan, keterangan, kirimWA) => {
     setLoading(true);
     try {
+      // Kalau ini skenario lunas (termasuk kelebihan bayar), pesan WA akan
+      // dikirim lewat /kirim-wa-kelebihan di bawah — jadi notif otomatis dari
+      // /pembayaran dimatikan dulu supaya wali tidak terima 2 pesan sekaligus.
+      const isLunasScenario = jumlahBayar >= sisaTagihan;
       const res = await axios.post(`${API}/pembayaran`, {
         tagihan_id: selectedTagihan.id,
         jumlah_bayar: jumlahBayar,
         tanggal_bayar: form.tanggal_bayar,
         keterangan: keterangan,
-        kirim_notif: kirimWA,
+        kirim_notif: isLunasScenario ? false : kirimWA,
       }, { headers });
 
       // Simpan data tagihan sebelum di-null
@@ -1615,7 +1619,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
                     <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#166534", fontFamily: "monospace", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
                     {pendingBayar?.isCicilan
   ? `Assalamu'alaikum Bapak/Ibu *${selectedUser.nama}*,\n\n💰 *Pembayaran Diterima (Cicilan)*\n━━━━━━━━━━━━━━━━━\nSantri  : *${selectedUser.nama_siswa}*\nTagihan : *${selectedTagihan?.jenis?.trim()}*\nDibayar : *${formatRupiah(pendingBayar.jumlahInput)}*\nSisa    : ⚠️ *${formatRupiah(sisaTagihan - pendingBayar.jumlahInput)}*\n━━━━━━━━━━━━━━━━━\nMohon segera lunasi sisa pembayaran 🙏\n\n_PP. Muhammadiyah Mambaul Ulum_\n_Mojo - Andong - Boyolali_`
-  : `Assalamu'alaikum Bapak/Ibu *${selectedUser.nama}*,\n\n✅ *Konfirmasi Pembayaran*\n━━━━━━━━━━━━━━━━━━\nSantri       : *${selectedUser.nama_siswa}*\n━━━━━━━━━━━━━━━━━━\n💰 Total Bayar   : *${formatRupiah(pendingBayar.jumlahInput)}*\n📚 Pembayaran : *${selectedTagihan?.jenis?.trim()}*\n✅ Untuk Tagihan    : *${formatRupiah(pendingBayar.jumlahBayar)}* (Lunas)\n━━━━━━━━━━━━━━━━━━\n🎉 Sisa Uang     : *${formatRupiah(pendingBayar.kelebihan)}*\n📝 Ket           : ${keteranganLebih}\n━━━━━━━━━━━━━━━━━━\nTerima kasih atas pembayarannya 🙏\n_Jazakumullah Khoiron, Semoga Allah memudahkan_\n_dan melapangkan rizqi Bapak/Ibu_ Aamiin 🤲\n\n_PP. Muhammadiyah Mambaul Ulum_\n_Mojo - Andong - Boyolali_`
+  : `Assalamu'alaikum Bapak/Ibu *${selectedUser.nama}*,\n\n✅ *Konfirmasi Pembayaran*\n━━━━━━━━━━━━━━━━━━\nSantri       : *${selectedUser.nama_siswa}*\n━━━━━━━━━━━━━━━━━━\n💰 Total Bayar   : *${formatRupiah(pendingBayar.jumlahInput)}*\n📚 Pembayaran : *${selectedTagihan?.jenis?.trim()}*\n✅ Untuk Tagihan    : *${formatRupiah(pendingBayar.jumlahBayar)}* (Lunas)\n━━━━━━━━━━━━━━━━━━\n🎉 Sisa Uang     : *${formatRupiah(pendingBayar.kelebihan)}*\n📝 Ket           : ${keteranganLebih}\n━━━━━━━━━━━━━━━━━━\n🏦 *Bank BRI*\n📋 No. Rek : *6665 0101 4641 533*\n👤 A.N     : *ALFIAN AJI WIBOWO*\n☎️ Kontak  : *081393695901*\n\nTerima kasih atas pembayarannya 🙏\n_Jazakumullah Khoiron, Semoga Allah memudahkan_\n_dan melapangkan rizqi Bapak/Ibu_ Aamiin 🤲\n\n_PP. Muhammadiyah Mambaul Ulum_\n_Mojo - Andong - Boyolali_`
 }
                     </div>
                   )}
