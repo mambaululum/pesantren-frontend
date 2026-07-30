@@ -2132,6 +2132,19 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
     return acc;
   }, {});
 
+  // Urutkan grup semester dari yang terbaru ke yang terlama.
+  // `semesters` sudah datang dari backend (/semester) dalam urutan terbaru->lama,
+  // jadi tinggal ikuti urutan itu. Semester yang tidak ada di daftar (mis. "(Tanpa Semester)")
+  // ditaruh paling akhir.
+  const tagihanBySemesterSorted = Object.entries(tagihanBySemester).sort(([a], [b]) => {
+    const ia = semesters.indexOf(a);
+    const ib = semesters.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
   // Filter rekap
   const santriRekap = santri.filter(s => {
     const tg = rekapData[s.id] || [];
@@ -2538,7 +2551,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
 
               {/* DAFTAR TAGIHAN per semester */}
               {loading ? <LoadingBarData /> :
-                Object.entries(tagihanBySemester).map(([semKey, items]) => (
+                tagihanBySemesterSorted.map(([semKey, items]) => (
                   <div key={semKey} style={{ marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <span style={{ background: "#e0f2fe", color: "#0369a1", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700 }}>📅 {semKey}</span>
@@ -3035,7 +3048,7 @@ function ManajemenSemester({ santri, headers, onRefreshSantri }) {
   // Otomatis pilih semester terakhir sebagai sumber jenis, begitu form tambah dibuka
   useEffect(() => {
     if (showTambah && !dupOtomatis && !sumberJenisSemester && semesters.length > 0) {
-      setSumberJenisSemester(semesters[semesters.length - 1].semester);
+      setSumberJenisSemester(semesters[0].semester);
     }
   }, [showTambah, dupOtomatis, semesters.length]);
 
