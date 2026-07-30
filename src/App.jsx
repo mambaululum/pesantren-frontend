@@ -633,7 +633,7 @@ function Row({ label, value, color }) {
 // ============================================================
 // DASHBOARD WALI SANTRI
 // ============================================================
-function Dashboard({ user, onLogout }) {
+function Dashboard({ user, onLogout, onUserUpdate }) {
   const [tagihan, setTagihan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("semua");
@@ -645,6 +645,23 @@ function Dashboard({ user, onLogout }) {
     axios.get(`${API}/tagihan`, { headers: { Authorization: `Bearer ${token}` } })
     .then(res => { setTagihan(res.data); setLoading(false); })
     .catch(() => setLoading(false));
+  }, []);
+
+  // Sinkronkan ulang profil (termasuk foto_url) tiap kali Dashboard dibuka,
+  // supaya kalau admin baru ganti foto, akun santri tidak perlu logout-login
+  // dulu buat lihat foto terbarunya.
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    axios.get(`${API}/auth/profil`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        const fresh = res.data.user;
+        if (fresh) {
+          localStorage.setItem("user", JSON.stringify(fresh));
+          onUserUpdate?.(fresh);
+        }
+      })
+      .catch(() => {}); // diam-diam gagal, tidak ganggu tampilan yang sudah ada
   }, []);
 
   // ── Kalkulasi ringkasan ──
@@ -1160,8 +1177,10 @@ export default function App() {
     setUser(null);
   };
 
+  const handleUserUpdate = (fresh) => setUser(fresh);
+
   return user
-    ? <Dashboard user={user} onLogout={handleLogout} />
+    ? <Dashboard user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />
     : <LoginPage onLogin={handleLogin} />;
 }
 // ============================================================
