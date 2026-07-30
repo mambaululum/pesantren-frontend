@@ -4887,25 +4887,75 @@ function BukuKas({ headers }) {
 }
 
 export default function Admin() {
-  const [admin, setAdmin] = useState(() => {
+  // "checking" = lagi memverifikasi & memperpanjang sesi ke server (silent refresh)
+  // "in" = sudah pasti login, "out" = sudah pasti belum/tidak login
+  const [authStatus, setAuthStatus] = useState("checking");
+  const [admin, setAdmin] = useState(null);
+
+  useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const saved = localStorage.getItem("adminUser");
-    if (token && saved) {
-      try { return JSON.parse(saved); } catch { return null; }
-    }
-    return null;
-  });
+    if (!token || !saved) { setAuthStatus("out"); return; }
+
+    let savedAdmin = null;
+    try { savedAdmin = JSON.parse(saved); } catch { /* biarkan null */ }
+
+    // Tampilkan dulu data admin yang tersimpan (biar tidak flash ke halaman login),
+    // lalu di background minta server memperpanjang token (sliding session).
+    // Kalau token lama ternyata sudah kadaluarsa/tidak valid, baru dialihkan ke login.
+    setAdmin(savedAdmin);
+    setAuthStatus("in");
+
+    axios.post(`${API}/refresh-token`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        localStorage.setItem("adminToken", res.data.token);
+        localStorage.setItem("adminUser", JSON.stringify(res.data.admin));
+        setAdmin(res.data.admin);
+      })
+      .catch(() => {
+        // Token sudah tidak bisa diperpanjang (kadaluarsa lebih dari 30 hari / rusak)
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        setAdmin(null);
+        setAuthStatus("out");
+      });
+  }, []);
+
+  // Jaring pengaman: kalau di tengah pemakaian ada request yang ditolak server karena
+  // token invalid/kadaluarsa (401/403), otomatis lempar ke halaman login (bukan diam saja).
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      res => res,
+      err => {
+        const status = err?.response?.status;
+        const pesan = err?.response?.data?.message || "";
+        const soalToken = pesan.includes("Token") || pesan.includes("admin");
+        if ((status === 401 || status === 403) && soalToken) {
+          localStorage.removeItem("adminToken");
+          localStorage.removeItem("adminUser");
+          setAdmin(null);
+          setAuthStatus("out");
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
 
   const handleLogin = (adminData) => {
     localStorage.setItem("adminUser", JSON.stringify(adminData));
     setAdmin(adminData);
+    setAuthStatus("in");
   };
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
     setAdmin(null);
+    setAuthStatus("out");
   };
+
+  if (authStatus === "checking") return null; // sekejap, sebelum status login dipastikan
 
   return admin
     ? <AdminDashboard admin={admin} onLogout={handleLogout} />
