@@ -416,11 +416,26 @@ const exportPDF = async (elId, filename) => {
   pdf.save(filename);
 };
 
+// Helper: export data tabel ke file Excel (.xlsx) — pakai SheetJS, dimuat dari CDN
+// sama seperti html2canvas/jsPDF di atas supaya tidak perlu npm install tambahan.
+// `sheets` = array of { name, rows, colWidths? }, rows = array of array (AOA).
+const exportExcel = async (filename, sheets) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  const wb = window.XLSX.utils.book_new();
+  sheets.forEach(sheet => {
+    const ws = window.XLSX.utils.aoa_to_sheet(sheet.rows);
+    if (sheet.colWidths) ws["!cols"] = sheet.colWidths.map(w => ({ wch: w }));
+    window.XLSX.utils.book_append_sheet(wb, ws, (sheet.name || "Sheet1").substring(0, 31));
+  });
+  window.XLSX.writeFile(wb, filename);
+};
+
 // Tombol export reusable
-function TombolExport({ elId, filename, exporting, setExporting, disabled }) {
+function TombolExport({ elId, filename, exporting, setExporting, disabled, getExcel }) {
   const tgl = new Date().toLocaleDateString("id-ID").replace(/\//g, "-");
   const fnJPG = `${filename}-${tgl}.jpg`;
   const fnPDF = `${filename}-${tgl}.pdf`;
+  const fnXLSX = `${filename}-${tgl}.xlsx`;
 
   const run = async (fn) => {
     setExporting(true);
@@ -429,7 +444,13 @@ function TombolExport({ elId, filename, exporting, setExporting, disabled }) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {getExcel && (
+        <button onClick={() => run(() => exportExcel(fnXLSX, getExcel()))} disabled={exporting || disabled}
+          style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: (exporting || disabled) ? 0.6 : 1 }}>
+          {exporting ? "⏳..." : "📊 Excel"}
+        </button>
+      )}
       <button onClick={() => run(() => exportJPG(elId, fnJPG))} disabled={exporting || disabled}
         style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: (exporting || disabled) ? 0.6 : 1 }}>
         {exporting ? "⏳..." : "🖼️ JPG"}
@@ -553,7 +574,29 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
       {tab === "semua" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <TombolExport elId="rekap-semua" filename="Rekap-Keuangan-Keseluruhan" exporting={exporting} setExporting={setExporting} disabled={loading} />
+            <TombolExport
+              elId="rekap-semua" filename="Rekap-Keuangan-Keseluruhan" exporting={exporting} setExporting={setExporting} disabled={loading}
+              getExcel={() => [{
+                name: "Rekap Keseluruhan",
+                colWidths: [4, 26, 10, 16, 16, 16, 12],
+                rows: [
+                  ["REKAP KEUANGAN KESELURUHAN - PP. MUHAMMADIYAH MAMBAUL ULUM"],
+                  [`Dicetak: ${new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`],
+                  [],
+                  ["Total Tagihan Semua Santri", Number(totalTagihan || 0)],
+                  ["Total Terbayar", Number(totalTerbayar || 0)],
+                  ["Total Tunggakan", Number(totalTunggakan || 0)],
+                  ["Santri Lunas", `${santriLunas} dari ${santri.length} santri`],
+                  [],
+                  ["No", "Nama Santri", "Kelas", "Total Tagihan", "Sudah Bayar", "Tunggakan", "Status"],
+                  ...santri.map((s, idx) => {
+                    const tunggakan = Math.round(Number(s.total_tagihan || 0) - Number(s.sudah_bayar || 0));
+                    const lunas = tunggakan <= 0 && Number(s.total_tagihan) > 0;
+                    return [idx + 1, s.nama_siswa, s.kelas, Number(s.total_tagihan || 0), Number(s.sudah_bayar || 0), tunggakan > 0 ? tunggakan : 0, lunas ? "Lunas" : "Belum Lunas"];
+                  }),
+                ],
+              }]}
+            />
           </div>
           <div id="rekap-semua" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
             <HeaderLaporan subtitle="Laporan Keuangan Keseluruhan"  />
@@ -668,6 +711,47 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                     exporting={exportingDetail}
                     setExporting={setExportingDetail}
                     disabled={loadingDetail}
+                    getExcel={() => {
+                      const totalTg = tagihanDetail.reduce((a, t) => a + Number(t.jumlah || 0), 0);
+                      const totalByr = tagihanDetail.reduce((a, t) => t.status === "lunas" ? a + Number(t.jumlah || 0) : a + Number(t.sudah_dicicil || 0), 0);
+                      const totalSisa = totalTg - totalByr;
+                      const ringkasan = {
+                        name: "Ringkasan",
+                        colWidths: [4, 26, 14, 16, 16, 16, 14],
+                        rows: [
+                          [`REKAP KEUANGAN SANTRI: ${selectedSantri.nama_siswa}`],
+                          [`Kelas: ${selectedSantri.kelas}   Wali: ${selectedSantri.nama || "-"}   Username: @${selectedSantri.username}`],
+                          [`Dicetak: ${new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`],
+                          [],
+                          ["Total Tagihan", Number(totalTg)],
+                          ["Total Terbayar", Number(totalByr)],
+                          ["Sisa Tunggakan", totalSisa > 0 ? Number(totalSisa) : 0],
+                          [],
+                          ["No", "Jenis Tagihan", "Semester", "Jumlah Tagihan", "Sudah Dibayar", "Sisa", "Status"],
+                          ...tagihanDetail.map((t, idx) => {
+                            const sudahBayar = t.status === "lunas" ? Number(t.jumlah) : Number(t.sudah_dicicil || 0);
+                            const sisa = Number(t.jumlah) - sudahBayar;
+                            const lunas = t.status === "lunas" || sisa <= 0;
+                            return [idx + 1, t.jenis, t.semester || "-", Number(t.jumlah || 0), sudahBayar, sisa > 0 ? sisa : 0, lunas ? "Lunas" : "Belum Lunas"];
+                          }),
+                        ],
+                      };
+                      const riwayatCicilan = {
+                        name: "Riwayat Cicilan",
+                        colWidths: [26, 4, 14, 16, 24],
+                        rows: [
+                          ["Jenis Tagihan", "No", "Tanggal", "Jumlah Bayar", "Keterangan"],
+                          ...tagihanDetail.flatMap(t =>
+                            (t.riwayat || []).map((r, ri) => [
+                              t.jenis, ri + 1,
+                              r.tanggal_bayar ? new Date(r.tanggal_bayar).toLocaleDateString("id-ID") : "-",
+                              Number(r.jumlah_bayar || 0), r.keterangan || "-",
+                            ])
+                          ),
+                        ],
+                      };
+                      return riwayatCicilan.rows.length > 1 ? [ringkasan, riwayatCicilan] : [ringkasan];
+                    }}
                   />
                 </div>
 
@@ -4185,6 +4269,20 @@ function RiwayatPembayaran({ headers }) {
               exporting={exportingBulanan}
               setExporting={setExportingBulanan}
               disabled={loadingBulanan || dataBulanan.length === 0}
+              getExcel={() => [{
+                name: "Riwayat Pembayaran",
+                colWidths: [4, 14, 26, 10, 22, 16, 24],
+                rows: [
+                  [`RIWAYAT PEMBAYARAN - ${namaBulanCetak}`],
+                  [`Total Terbayar: ${dataBulanan.length} transaksi`],
+                  [],
+                  ["No", "Tanggal", "Nama Santri", "Kelas", "Jenis Tagihan", "Jumlah Bayar", "Keterangan"],
+                  ...dataBulanan.map((r, idx) => [
+                    idx + 1, formatTanggalWIB(r.tanggal_bayar), r.nama_siswa, r.kelas, r.jenis_tagihan, Number(r.jumlah_bayar || 0), r.keterangan || "-",
+                  ]),
+                  ["", "", "", "", "TOTAL", Number(totalBulanan || 0), ""],
+                ],
+              }]}
             />
           </div>
         </div>
@@ -4810,7 +4908,28 @@ function BukuKas({ headers }) {
               <input type="month" style={{ ...iStyle, padding: "8px 12px", fontSize: 13 }} value={bulanFilter} onChange={e => setBulanFilter(e.target.value)} />
             </div>
             <div style={{ marginLeft: "auto" }}>
-              <TombolExport elId="cetak-rekap-kas" filename={`Rekap-Buku-Kas-${bulanFilter}`} exporting={exportingRekap} setExporting={setExportingRekap} disabled={loading} />
+              <TombolExport
+                elId="cetak-rekap-kas" filename={`Rekap-Buku-Kas-${bulanFilter}`} exporting={exportingRekap} setExporting={setExportingRekap} disabled={loading}
+                getExcel={() => [{
+                  name: "Rekap Buku Kas",
+                  colWidths: [14, 30, 16, 16, 16],
+                  rows: [
+                    [`REKAP BUKU KAS - ${namaBulanTahun}`],
+                    [],
+                    ["Saldo Awal", Number(saldoAwalBulan || 0)],
+                    ["Total Debit", Number(totalDebitBulan || 0)],
+                    ["Total Kredit", Number(totalKreditBulan || 0)],
+                    ["Saldo Akhir", Number(saldoAkhirBulan || 0)],
+                    [],
+                    ["Tanggal", "Catatan", "Debit", "Kredit", "Saldo"],
+                    ...entriesBulanIniAsc.map(row => [
+                      new Date(row.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+                      row.catatan || "-", Number(row.debit || 0), Number(row.kredit || 0), Number(row.saldo || 0),
+                    ]),
+                    ["Total", "", Number(totalDebitBulan || 0), Number(totalKreditBulan || 0), Number(saldoAkhirBulan || 0)],
+                  ],
+                }]}
+              />
             </div>
           </div>
 
