@@ -7,6 +7,21 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 import Admin from "./Admin";
+
+// Urutan bulan tahun ajaran pondok (mulai Juli s/d Juni) — samakan dengan admin.js
+// supaya urutan tagihan bulanan di akun santri/wali konsisten dengan sisi admin.
+const URUTAN_BULAN = [
+  'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
+  'januari', 'februari', 'maret', 'april', 'mei', 'juni'
+];
+// Cari nama bulan di dalam teks jenis tagihan (mis. "Syahriyah September" -> 2).
+// Balikin null kalau jenis tagihan tidak mengandung nama bulan (tagihan semester/barang).
+const getIndeksBulan = (jenisText) => {
+  const teks = String(jenisText || '').toLowerCase();
+  const idx = URUTAN_BULAN.findIndex((bulan) => teks.includes(bulan));
+  return idx === -1 ? null : idx;
+};
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -638,10 +653,35 @@ function Dashboard({ user, onLogout }) {
     .filter(t => activeTab === "semua" ? true : t.status === activeTab)
     .slice()
     .sort((a, b) => {
-      if (!a.tanggal_bayar && !b.tanggal_bayar) return 0;
-      if (!a.tanggal_bayar) return -1;
-      if (!b.tanggal_bayar) return 1;
-      return new Date(a.tanggal_bayar) - new Date(b.tanggal_bayar);
+      // 1) Semester terbaru dulu — dipakai id tagihan tertinggi dalam 1 semester sebagai
+      //    "usia" semester itu, karena semester baru pasti dibuat admin belakangan (id besar)
+      //    sementara nama semester sendiri teks bebas jadi tidak bisa diurutkan langsung.
+      const rankSemester = (t) => {
+        const sama = tagihan.filter(x => (x.semester || "") === (t.semester || ""));
+        return Math.max(...sama.map(x => Number(x.id) || 0));
+      };
+      const rankA = rankSemester(a);
+      const rankB = rankSemester(b);
+      if (rankA !== rankB) return rankB - rankA;
+
+      // 2) Dalam semester yang sama: belum lunas duluan, baru yang sudah lunas
+      const belumA = a.status !== "lunas";
+      const belumB = b.status !== "lunas";
+      if (belumA !== belumB) return belumA ? -1 : 1;
+
+      // 3) Dalam semester + status yang sama: urut sesuai bulan tahun ajaran (Juli→Juni),
+      //    dibaca dari nama bulan di teks jenis tagihan (mis. "Syahriyah September").
+      //    Tagihan yang tidak mengandung nama bulan (Kesantrian, Buku Pondok, dll)
+      //    ditaruh di akhir grup, diurut dari nominal terbesar.
+      const bulanA = getIndeksBulan(a.jenis);
+      const bulanB = getIndeksBulan(b.jenis);
+      if (bulanA !== null && bulanB !== null) return bulanA - bulanB;
+      if (bulanA !== null) return -1;
+      if (bulanB !== null) return 1;
+      if (Number(b.jumlah || 0) !== Number(a.jumlah || 0)) return Number(b.jumlah || 0) - Number(a.jumlah || 0);
+
+      // 4) Tie-breaker terakhir: tagihan yang dibuat lebih dulu tampil lebih dulu
+      return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
 
   const handleLogout = async () => {
