@@ -22,6 +22,20 @@ const getIndeksBulan = (jenisText) => {
   return idx === -1 ? null : idx;
 };
 
+// Ubah teks semester (mis. "Semester 1 2026/2027") jadi angka yang bisa diurutkan
+// langsung berdasarkan tahun ajaran + nomor semester — BUKAN berdasarkan id tagihan,
+// supaya urutan semester akurat walau admin membuat tagihannya tidak berurutan
+// secara kronologis (mis. tagihan semester baru dibuat lebih dulu daripada tagihan
+// susulan di semester lama). Semakin besar hasilnya, semakin baru semesternya.
+// Format tak dikenali ditaruh paling bawah (-Infinity).
+const parseSemesterRank = (semesterText) => {
+  const teks = String(semesterText || '');
+  const match = teks.match(/semester\s*(\d+)\s*(\d{4})\s*\/\s*\d{4}/i);
+  if (!match) return -Infinity;
+  const [, smt, tahunAwal] = match;
+  return Number(tahunAwal) * 10 + Number(smt);
+};
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -653,16 +667,24 @@ function Dashboard({ user, onLogout }) {
     .filter(t => activeTab === "semua" ? true : t.status === activeTab)
     .slice()
     .sort((a, b) => {
-      // 1) Semester terbaru dulu — dipakai id tagihan tertinggi dalam 1 semester sebagai
-      //    "usia" semester itu, karena semester baru pasti dibuat admin belakangan (id besar)
-      //    sementara nama semester sendiri teks bebas jadi tidak bisa diurutkan langsung.
-      const rankSemester = (t) => {
+      // 1) Semester terbaru dulu — dihitung langsung dari nama semester (tahun ajaran +
+      //    nomor semester), BUKAN dari id tagihan. Ini penting karena admin bisa saja
+      //    membuat tagihan susulan di semester lama SETELAH tagihan semester baru sudah
+      //    ada, sehingga id besar tidak selalu berarti semester lebih baru.
+      //    Kalau format nama semester tidak dikenali, fallback ke id tagihan tertinggi
+      //    dalam grup itu supaya pengelompokan tetap stabil (contiguous).
+      const rankSemesterId = (t) => {
         const sama = tagihan.filter(x => (x.semester || "") === (t.semester || ""));
         return Math.max(...sama.map(x => Number(x.id) || 0));
       };
-      const rankA = rankSemester(a);
-      const rankB = rankSemester(b);
+      const rankA = parseSemesterRank(a.semester);
+      const rankB = parseSemesterRank(b.semester);
       if (rankA !== rankB) return rankB - rankA;
+      if (rankA === -Infinity) {
+        const idRankA = rankSemesterId(a);
+        const idRankB = rankSemesterId(b);
+        if (idRankA !== idRankB) return idRankB - idRankA;
+      }
 
       // 2) Dalam semester yang sama: belum lunas duluan, baru yang sudah lunas
       const belumA = a.status !== "lunas";
