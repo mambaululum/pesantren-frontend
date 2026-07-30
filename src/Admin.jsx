@@ -856,10 +856,27 @@ function InputCicilan({ santri: santriRaw, headers }) {
   const [showKonfirmasiBulk, setShowKonfirmasiBulk] = useState(false);
   const [kirimWABulk, setKirimWABulk] = useState(true);
   const [metodeBayarBulk, setMetodeBayarBulk] = useState("tunai");
-  // Item non-tagihan (pembayaran campuran) — bagian dari setoran yang tidak terkait tagihan manapun
+  // Item non-tagihan (pembayaran campuran) — bagian dari setoran yang tidak terkait tagihan manapun.
+  // Bisa lebih dari 1 item sekaligus dalam 1 transaksi (mis: kaos + buku).
+  // Bentuk tiap item: { keperluan, jumlah }
   const [adaItemLain, setAdaItemLain] = useState(false);
-  const [itemLainKeperluan, setItemLainKeperluan] = useState("");
-  const [itemLainJumlah, setItemLainJumlah] = useState("");
+  const [itemsLain, setItemsLain] = useState([{ keperluan: "", jumlah: "" }]);
+
+  const handleTambahItemLain = () => {
+    setItemsLain(prev => [...prev, { keperluan: "", jumlah: "" }]);
+  };
+  const handleHapusItemLain = (idx) => {
+    setItemsLain(prev => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx));
+  };
+  const handleUbahItemLain = (idx, field, value) => {
+    setItemsLain(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  };
+  const itemsLainValid = itemsLain.filter(it => it.keperluan && Number(it.jumlah) > 0);
+
+  // Titip Tabungan — uang yang dititipkan wali untuk disimpan, TIDAK mengurangi tagihan manapun
+  const [adaTabungan, setAdaTabungan] = useState(false);
+  const [tabunganJumlah, setTabunganJumlah] = useState("");
+  const [tabunganKeterangan, setTabunganKeterangan] = useState("");
 
   const handleSelectTagihan = (t) => {
     setSelectedTagihan(t);
@@ -890,16 +907,19 @@ function InputCicilan({ santri: santriRaw, headers }) {
     }));
   };
 
-  // BULK: total keseluruhan yang akan dibayar (jumlah semua item terpilih + item non-tagihan)
-  const totalBayarBulk = itemsBulk.reduce((a, it) => a + (Number(it.bayar) || 0), 0) + (adaItemLain ? Number(itemLainJumlah || 0) : 0);
+  // BULK: total keseluruhan yang akan dibayar (jumlah semua tagihan + semua item non-tagihan + titip tabungan)
+  const totalBayarBulk = itemsBulk.reduce((a, it) => a + (Number(it.bayar) || 0), 0)
+    + (adaItemLain ? itemsLainValid.reduce((a, it) => a + Number(it.jumlah || 0), 0) : 0)
+    + (adaTabungan ? Number(tabunganJumlah || 0) : 0);
   const totalSisaBulk = itemsBulk.reduce((a, it) => a + it.sisa, 0);
   const jumlahAkanLunas = itemsBulk.filter(it => Number(it.bayar) >= it.sisa && it.sisa > 0).length;
   const jumlahAkanCicil = itemsBulk.filter(it => Number(it.bayar) > 0 && Number(it.bayar) < it.sisa).length;
 
   // BULK: simpan pembayaran fleksibel — tiap tagihan dibayar sesuai nominal yang diisi admin
   const handleSimpanBulk = async () => {
-    if (itemsBulk.length === 0 && !adaItemLain) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
-    if (adaItemLain && (!itemLainJumlah || !itemLainKeperluan)) { setMsg("❌ Isi keperluan & jumlah item non-tagihan!"); return; }
+    if (itemsBulk.length === 0 && !adaItemLain && !adaTabungan) { setMsg("❌ Pilih minimal 1 tagihan!"); return; }
+    if (adaItemLain && itemsLainValid.length === 0) { setMsg("❌ Isi keperluan & jumlah item non-tagihan!"); return; }
+    if (adaTabungan && !(Number(tabunganJumlah) > 0)) { setMsg("❌ Isi jumlah titip tabungan!"); return; }
     const itemKosong = itemsBulk.find(it => !it.bayar || Number(it.bayar) <= 0);
     if (itemKosong) { setMsg(`❌ Isi nominal bayar untuk "${itemKosong.jenis}" (atau batalkan centangnya)`); return; }
     setLoading(true);
@@ -912,11 +932,15 @@ function InputCicilan({ santri: santriRaw, headers }) {
         metode_bayar: metodeBayarBulk,
         kirim_notif: kirimWABulk,
       };
-      if (adaItemLain && Number(itemLainJumlah) > 0) {
-        payload.item_lain = { keperluan: itemLainKeperluan, jumlah: Number(itemLainJumlah) };
+      if (adaItemLain && itemsLainValid.length > 0) {
+        payload.items_lain = itemsLainValid.map(it => ({ keperluan: it.keperluan, jumlah: Number(it.jumlah) }));
+      }
+      if (adaTabungan && Number(tabunganJumlah) > 0) {
+        payload.setoran_tabungan = { jumlah: Number(tabunganJumlah), keterangan: tabunganKeterangan };
       }
       const res = await axios.post(`${API}/pembayaran-fleksibel`, payload, { headers });
-      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${res.data.cicilan ? `, ${res.data.cicilan} tagihan dicicil` : ""}${payload.item_lain ? ` + 1 item non-tagihan` : ""}. 📲 Notifikasi WA terkirim.`);
+      const jmlItemLain = payload.items_lain?.length || 0;
+      setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${res.data.cicilan ? `, ${res.data.cicilan} tagihan dicicil` : ""}${jmlItemLain ? ` + ${jmlItemLain} item non-tagihan` : ""}${payload.setoran_tabungan ? ` + titip tabungan Rp ${formatRupiah(payload.setoran_tabungan.jumlah)}` : ""}. 📲 Notifikasi WA terkirim.`);
       // Optimistic: hapus tagihan yang lunas penuh dari state lokal, update sisa yang baru dicicil
       const idsLunas = itemsBulk.filter(it => Number(it.bayar) >= it.sisa).map(it => it.id);
       setTagihan(prev => prev
@@ -931,8 +955,10 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setTanggalBulk(new Date().toISOString().split("T")[0]);
       setKeteranganBulk("");
       setAdaItemLain(false);
-      setItemLainKeperluan("");
-      setItemLainJumlah("");
+      setItemsLain([{ keperluan: "", jumlah: "" }]);
+      setAdaTabungan(false);
+      setTabunganJumlah("");
+      setTabunganKeterangan("");
       setShowKonfirmasiBulk(false);
       setSelectedTagihan(null);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
@@ -1261,18 +1287,61 @@ function InputCicilan({ santri: santriRaw, headers }) {
               </div>
               {adaItemLain && (
                 <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                  {itemsLain.map((it, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 6, marginBottom: idx === itemsLain.length - 1 ? 8 : 6, alignItems: "center" }}>
+                      <input
+                        style={{ ...iStyle, flex: 2 }}
+                        placeholder="Keperluan (mis: kaos, buku, dll)"
+                        value={it.keperluan}
+                        onChange={e => handleUbahItemLain(idx, "keperluan", e.target.value)}
+                      />
+                      <input
+                        style={{ ...iStyle, flex: 1 }}
+                        type="number"
+                        placeholder="Jumlah"
+                        value={it.jumlah}
+                        onChange={e => handleUbahItemLain(idx, "jumlah", e.target.value)}
+                      />
+                      {itemsLain.length > 1 && (
+                        <button
+                          onClick={() => handleHapusItemLain(idx)}
+                          style={{ border: "none", background: "#fee2e2", color: "#dc2626", borderRadius: 6, width: 30, height: 34, fontSize: 14, cursor: "pointer" }}
+                          title="Hapus item ini"
+                        >✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleTambahItemLain}
+                    style={{ border: "1px dashed #ca8a04", background: "transparent", color: "#92400e", borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >➕ Tambah item lain</button>
+                </div>
+              )}
+
+              {/* TITIP TABUNGAN — uang dititipkan, tidak mengurangi tagihan manapun */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: adaTabungan ? 8 : 12, cursor: "pointer" }}
+                onClick={() => setAdaTabungan(!adaTabungan)}>
+                <span style={{ fontSize: 18, color: adaTabungan ? "#059669" : "#cbd5e1" }}>
+                  {adaTabungan ? "☑️" : "⬜"}
+                </span>
+                <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
+                  💰 Ada bagian setoran untuk titip tabungan?
+                </span>
+              </div>
+              {adaTabungan && (
+                <div style={{ background: "#ecfdf5", border: "1px solid #6ee7b7", borderRadius: 8, padding: 10, marginBottom: 12 }}>
                   <input
                     style={{ ...iStyle, marginBottom: 8 }}
-                    placeholder="Keperluan (mis: kaos, buku, dll)"
-                    value={itemLainKeperluan}
-                    onChange={e => setItemLainKeperluan(e.target.value)}
+                    type="number"
+                    placeholder="Jumlah titip tabungan"
+                    value={tabunganJumlah}
+                    onChange={e => setTabunganJumlah(e.target.value)}
                   />
                   <input
                     style={iStyle}
-                    type="number"
-                    placeholder="Jumlah untuk item ini"
-                    value={itemLainJumlah}
-                    onChange={e => setItemLainJumlah(e.target.value)}
+                    placeholder="Keterangan (opsional)"
+                    value={tabunganKeterangan}
+                    onChange={e => setTabunganKeterangan(e.target.value)}
                   />
                 </div>
               )}
@@ -1286,8 +1355,8 @@ function InputCicilan({ santri: santriRaw, headers }) {
                   }}
                   disabled={loading}
                 >
-                  {adaItemLain
-                    ? `💾 Bayar ${itemsBulk.length} Tagihan + Item Lain`
+                  {(adaItemLain || adaTabungan)
+                    ? `💾 Bayar ${itemsBulk.length} Tagihan${adaItemLain ? " + Item Lain" : ""}${adaTabungan ? " + Tabungan" : ""}`
                     : `💾 Bayar ${itemsBulk.length} Tagihan Sekaligus`}
                 </button>
               ) : (
@@ -1308,9 +1377,19 @@ function InputCicilan({ santri: santriRaw, headers }) {
                       </ul>
                     </div>
                   )}
-                  {adaItemLain && itemLainJumlah && (
+                  {adaItemLain && itemsLainValid.length > 0 && (
                     <div style={{ fontSize: 13, marginBottom: 6 }}>
-                      Item non-tagihan: <b>{itemLainKeperluan || "-"} ({formatRupiah(Number(itemLainJumlah))})</b>
+                      Item non-tagihan:
+                      <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                        {itemsLainValid.map((it, idx) => (
+                          <li key={idx}>{it.keperluan}: <b>{formatRupiah(Number(it.jumlah))}</b></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {adaTabungan && Number(tabunganJumlah) > 0 && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>
+                      Titip Tabungan: <b style={{ color: "#059669" }}>{formatRupiah(Number(tabunganJumlah))}</b>
                     </div>
                   )}
                   {keteranganBulk && <div style={{ fontSize: 13, marginBottom: 6 }}>Keterangan: <b>{keteranganBulk}</b></div>}
