@@ -1802,6 +1802,55 @@ function DataSantri({ santri, headers, onRefresh }) {
   const [form, setForm] = useState({});
   const [showPass, setShowPass] = useState(false);
   const [msg, setMsg] = useState("");
+  const fotoInputRef = useRef(null);
+  const [fotoTargetId, setFotoTargetId] = useState(null);
+  const [uploadingFotoId, setUploadingFotoId] = useState(null);
+
+  // Kompres & resize foto di browser sebelum dikirim (max 500px, JPEG q=0.8)
+  const compressFoto = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 500;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        resolve({ base64: dataUrl.split(",")[1], mime_type: "image/jpeg" });
+      };
+      img.onerror = () => reject(new Error("Gagal membaca gambar"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file"));
+    reader.readAsDataURL(file);
+  });
+
+  const handleFotoClick = (id) => {
+    setFotoTargetId(id);
+    fotoInputRef.current.value = "";
+    fotoInputRef.current.click();
+  };
+
+  const handleFotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !fotoTargetId) return;
+    setUploadingFotoId(fotoTargetId);
+    try {
+      const { base64, mime_type } = await compressFoto(file);
+      await axios.post(`${API}/santri/${fotoTargetId}/foto`, { foto_base64: base64, mime_type }, { headers });
+      setMsg("✅ Foto berhasil diupload!");
+      AdminDashboard._cache = null;
+      onRefresh();
+      setTimeout(() => setMsg(""), 3000);
+    } catch (e) {
+      setMsg("❌ Gagal upload foto: " + (e.response?.data?.message || e.message));
+    }
+    setUploadingFotoId(null);
+    setFotoTargetId(null);
+  };
 
   const handleKirimAkun = async (s) => {
     if (!s.no_hp) { setMsg("❌ Nomor WA wali belum diisi!"); return; }
@@ -1838,6 +1887,7 @@ function DataSantri({ santri, headers, onRefresh }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>👥 Data Santri ({santri.length})</div>
+      <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFotoChange} />
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
       <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
       {Object.entries(
@@ -1883,14 +1933,35 @@ function DataSantri({ santri, headers, onRefresh }) {
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>{s.kelas} · Wali: {s.nama} · @{s.username}</div>
-                  <div style={{ fontSize: 12, marginTop: 2 }}>
-                    {s.no_hp ? <span style={{ color: "#059669" }}>📱 {s.no_hp} <span style={{ background: "#dcfce7", padding: "1px 6px", borderRadius: 4 }}>WA Aktif</span></span> : <span style={{ color: "#f59e0b" }}>⚠️ No. WA belum diisi</span>}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    onClick={() => handleFotoClick(s.id)}
+                    title="Klik untuk upload/ganti foto"
+                    style={{
+                      width: 44, height: 44, borderRadius: "50%", flexShrink: 0, cursor: "pointer",
+                      background: s.foto_url ? `#e5e7eb url(${s.foto_url}) center/cover no-repeat` : "#e5e7eb",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      border: "2px solid #cbd5e1", position: "relative", overflow: "hidden"
+                    }}
+                  >
+                    {uploadingFotoId === s.id ? (
+                      <span style={{ fontSize: 10, color: "#475569" }}>...</span>
+                    ) : !s.foto_url ? (
+                      <span style={{ fontSize: 18 }}>📷</span>
+                    ) : null}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{s.nama_siswa}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{s.kelas} · Wali: {s.nama} · @{s.username}</div>
+                    <div style={{ fontSize: 12, marginTop: 2 }}>
+                      {s.no_hp ? <span style={{ color: "#059669" }}>📱 {s.no_hp} <span style={{ background: "#dcfce7", padding: "1px 6px", borderRadius: 4 }}>WA Aktif</span></span> : <span style={{ color: "#f59e0b" }}>⚠️ No. WA belum diisi</span>}
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ background: "#0891b2", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => handleFotoClick(s.id)} disabled={uploadingFotoId === s.id}>
+                    {uploadingFotoId === s.id ? "⏳ Upload..." : "📷 Foto"}
+                  </button>
                   <button style={btnBlue} onClick={() => handleEdit(s)}>✏️ Edit</button>
 <button style={{ background: "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => handleKirimAkun(s)}>📲 Kirim Akun</button>
 <button style={btnRed} onClick={() => handleDelete(s.id, s.nama_siswa)}>🗑️ Hapus</button>
