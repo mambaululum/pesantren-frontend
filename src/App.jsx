@@ -741,26 +741,44 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.dashBg}>
+      {/* CSS RESPONSIF — foto/logo lebih besar & proporsional di HP maupun laptop */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .app-header-logo { width: 46px; height: 46px; border-radius: 13px; }
+        .app-header-avatar { width: 34px; height: 34px; font-size: 14px; }
+        .app-hero-avatar { width: 72px; height: 72px; font-size: 28px; }
+        .app-hero-card { padding: 20px; gap: 16px; }
+        @media (min-width: 640px) {
+          .app-header-logo { width: 60px; height: 60px; border-radius: 16px; }
+          .app-header-avatar { width: 40px; height: 40px; font-size: 16px; }
+          .app-hero-avatar { width: 104px; height: 104px; font-size: 40px; }
+          .app-hero-card { padding: 28px; gap: 22px; }
+        }
+      `}} />
       {/* HEADER */}
 <header style={styles.header}>
   <div style={{ height: 3, background: "linear-gradient(90deg, #c9a84c, #f0d080, #c9a84c)" }} />
-  <div style={{ padding: "10px 16px 6px", display: "flex", alignItems: "center", gap: 8 }}>
-    <img src="/Mu.png" style={{ width: 34, height: 34, borderRadius: 9, objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.6)", flexShrink: 0 }} alt="logo" />
+  <div style={{
+    position: "relative",
+    padding: "18px 16px 14px",
+    display: "flex", alignItems: "center", gap: 14,
+    backgroundImage: "radial-gradient(circle at 15% 10%, rgba(201,168,76,0.10) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(255,255,255,0.05) 0%, transparent 40%)"
+  }}>
+    <img src="/Mu.png" className="app-header-logo" style={{ objectFit: "cover", border: "2px solid rgba(201,168,76,0.75)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)", flexShrink: 0 }} alt="logo" />
     <div>
-      <div style={{ fontWeight: 700, fontSize: 13, color: "white" }}>PP. Muhammadiyah Mambaul Ulum</div>
-      <div style={{ fontSize: 9, color: "rgba(201,168,76,0.9)", letterSpacing: "0.5px" }}>✦ Sistem Informasi Keuangan Santri ✦</div>
+      <div style={{ fontWeight: 800, fontSize: 16, color: "white", letterSpacing: "0.2px", lineHeight: 1.25 }}>PP. Muhammadiyah Mambaul Ulum</div>
+      <div style={{ fontSize: 11, color: "rgba(240,208,128,0.95)", letterSpacing: "0.6px", marginTop: 3, fontWeight: 500 }}>✦ Sistem Informasi Keuangan Santri ✦</div>
     </div>
   </div>
-  <div style={{ height: "0.5px", background: "rgba(255,255,255,0.1)", margin: "0 16px" }} />
-  <div style={{ padding: "6px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+  <div style={{ height: "0.5px", background: "rgba(255,255,255,0.12)", margin: "0 16px" }} />
+  <div style={{ padding: "10px 16px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {user.foto_url
-        ? <img src={user.foto_url} alt={user.nama} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(201,168,76,0.7)", flexShrink: 0 }} />
-        : <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(201,168,76,0.3)", border: "1.5px solid rgba(201,168,76,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "white", fontWeight: 700, flexShrink: 0 }}>{user.nama?.charAt(0).toUpperCase()}</div>
+        ? <img src={user.foto_url} alt={user.nama} className="app-header-avatar" style={{ borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(201,168,76,0.8)", flexShrink: 0 }} />
+        : <div className="app-header-avatar" style={{ borderRadius: "50%", background: "linear-gradient(135deg, rgba(201,168,76,0.45), rgba(201,168,76,0.2))", border: "2px solid rgba(201,168,76,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, flexShrink: 0 }}>{user.nama?.charAt(0).toUpperCase()}</div>
       }
-      <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: 600 }}>{user.nama}</span>
+      <span style={{ color: "rgba(255,255,255,0.95)", fontSize: 13, fontWeight: 600 }}>{user.nama}</span>
     </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <NotifikasiPanel token={localStorage.getItem("token")} />
       <button style={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
     </div>
@@ -769,14 +787,36 @@ function Dashboard({ user, onLogout }) {
 </header>
 
       <div style={styles.dashContent}>
-        {/* KARTU SANTRI */}
-        <div style={styles.studentCard}>
-          <div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Data Santri</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{user.nama_siswa}</div>
-            <div style={{ fontSize: 13, color: "#64748b" }}>Kelas {user.kelas}</div>
+        {/* KARTU SANTRI — foto lebih besar & tampilan lebih hidup */}
+        <div className="app-hero-card" style={{
+          background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+          borderRadius: 20,
+          display: "flex", alignItems: "center", flexWrap: "wrap",
+          boxShadow: "0 6px 20px rgba(15,23,42,0.08)",
+          border: "1px solid #eef2f7",
+          position: "relative", overflow: "hidden"
+        }}>
+          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(30,64,175,0.07), transparent 70%)" }} />
+          <div style={{ position: "absolute", bottom: -50, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,168,76,0.06), transparent 70%)" }} />
+
+          {user.foto_url
+            ? <img src={user.foto_url} alt={user.nama_siswa} className="app-hero-avatar" style={{ borderRadius: "50%", objectFit: "cover", border: "4px solid #dbeafe", boxShadow: "0 6px 18px rgba(30,64,175,0.18)", flexShrink: 0, position: "relative" }} />
+            : <div className="app-hero-avatar" style={{ borderRadius: "50%", background: "linear-gradient(135deg, #1e40af, #3b82f6)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "white", flexShrink: 0, boxShadow: "0 6px 18px rgba(30,64,175,0.25)", position: "relative" }}>
+                {(user.nama_siswa || user.nama)?.charAt(0).toUpperCase()}
+              </div>
+          }
+
+          <div style={{ flex: 1, minWidth: 170, position: "relative" }}>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase" }}>Data Santri</div>
+            <div style={{ fontSize: 21, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>{user.nama_siswa}</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, fontWeight: 500 }}>Kelas {user.kelas}</div>
           </div>
-          <div style={styles.statusBadge(kekurangan <= 0)}>
+
+          <div style={{
+            ...styles.statusBadge(kekurangan <= 0),
+            fontSize: 13, padding: "9px 18px", position: "relative",
+            boxShadow: kekurangan <= 0 ? "0 3px 10px rgba(6,95,70,0.15)" : "0 3px 10px rgba(153,27,27,0.15)"
+          }}>
             {kekurangan <= 0 ? "✓ Lunas" : "⚠ Ada Tunggakan"}
           </div>
         </div>
