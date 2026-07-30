@@ -317,7 +317,7 @@ function AdminDashboard({ admin, onLogout }) {
         )}
         {menu === "santri" && <DataSantri santri={santri} headers={headers} onRefresh={() => loadSantri(true)} />}
         {menu === "tagihan" && <DataTagihan santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
-        {menu === "cicilan" && <InputCicilan santri={santri} headers={headers} />}
+        {menu === "cicilan" && <InputCicilan santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
         {menu === "tambah_santri" && <TambahSantri headers={headers} onRefresh={() => { loadSantri(); setMenu("santri"); }} />}
         {menu === "pengingat" && <Pengingat santri={santri} headers={headers} />}
         {menu === "semester" && <ManajemenSemester santri={santri} headers={headers} onRefreshSantri={loadSantri} />}
@@ -891,7 +891,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
 // ============================================================
 // INPUT CICILAN / PEMBAYARAN SEBAGIAN
 // ============================================================
-function InputCicilan({ santri: santriRaw, headers }) {
+function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
   // Urutkan santri berdasarkan angka di depan kelas (1-6), lalu nama
   const santri = [...santriRaw].sort((a, b) => {
     const numA = parseInt((a.kelas || '').replace(/\D/g, '')) || 99;
@@ -1025,6 +1025,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
       const res = await axios.post(`${API}/pembayaran-fleksibel`, payload, { headers });
       const jmlItemLain = payload.items_lain?.length || 0;
       setMsg(`✅ Pembayaran berhasil! ${res.data.lunas} tagihan lunas${res.data.cicilan ? `, ${res.data.cicilan} tagihan dicicil` : ""}${jmlItemLain ? ` + ${jmlItemLain} item non-tagihan` : ""}${payload.setoran_tabungan ? ` + titip tabungan Rp ${formatRupiah(payload.setoran_tabungan.jumlah)}` : ""}. 📲 Notifikasi WA terkirim.`);
+      if (onRefreshSantri) onRefreshSantri(true);
       // Optimistic: hapus tagihan yang lunas penuh dari state lokal, update sisa yang baru dicicil
       const idsLunas = itemsBulk.filter(it => Number(it.bayar) >= it.sisa).map(it => it.id);
       setTagihan(prev => prev
@@ -1121,6 +1122,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
         // Tambah cicilan ke riwayat lokal (optimistic)
         setRiwayatBayar(prev => [...prev, newCicilan]);
       }
+      if (onRefreshSantri) onRefreshSantri(true);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 5000);
@@ -1150,6 +1152,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setEditCicilan(null);
       // Optimistic: update riwayat lokal
       setRiwayatBayar(prev => prev.map(r => r.id === cicilanId ? { ...r, ...editForm, jumlah_bayar: Number(editForm.jumlah_bayar) } : r));
+      if (onRefreshSantri) onRefreshSantri(true);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal mengupdate cicilan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 4000);
@@ -1164,6 +1167,7 @@ function InputCicilan({ santri: santriRaw, headers }) {
       setMsg("✅ Cicilan berhasil dihapus!");
       // Optimistic: hapus dari riwayat lokal
       setRiwayatBayar(prev => prev.filter(r => r.id !== cicilanId));
+      if (onRefreshSantri) onRefreshSantri(true);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menghapus cicilan")); }
     setLoading(false);
     setTimeout(() => setMsg(""), 4000);
@@ -2027,6 +2031,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
       setEditTagihan(null);
       loadTagihan(selectedUser.id);
       setRekapData({});
+      onRefreshSantri(true);
       setTimeout(() => setMsg(""), 4000);
     } catch (e) { setMsg("❌ Gagal"); }
   };
@@ -2038,6 +2043,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
       setMsg("✅ Lunas! (tanpa notifikasi WA)");
       loadTagihan(selectedUser.id);
       setRekapData({});
+      onRefreshSantri(true);
       setTimeout(() => setMsg(""), 3000);
     } catch (e) { setMsg("❌ Gagal"); }
   };
@@ -2050,6 +2056,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
       setMsg("✅ " + r.data.message);
       loadTagihan(selectedUser.id);
       setRekapData({});
+      onRefreshSantri(true);
       setTimeout(() => setMsg(""), 4000);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal reset tagihan")); }
     setResetingId(null);
@@ -2059,7 +2066,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
     if (!confirm("Hapus tagihan ini? Semua cicilan ikut terhapus!")) return;
     try {
       await axios.delete(`${API}/tagihan/${id}`, { headers });
-      setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); setTimeout(() => setMsg(""), 3000);
+      setMsg("✅ Dihapus!"); loadTagihan(selectedUser.id); setRekapData({}); onRefreshSantri(true); setTimeout(() => setMsg(""), 3000);
     } catch (e) { setMsg("❌ " + (e.response?.data?.message || "Gagal menghapus tagihan")); }
   };
 
@@ -2083,6 +2090,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
         [santriObj.id]: prev[santriObj.id].map(x => x.id === t.id ? { ...x, status: newStatus, tanggal_bayar: newStatus === "lunas" ? today : null } : x)
       }));
       setRekapMsg(`✅ Tagihan "${t.jenis}" (${santriObj.nama_siswa}) → ${newStatus === "lunas" ? "Lunas" : "Belum Bayar"}`);
+      onRefreshSantri(true);
     } catch (e) { setRekapMsg("❌ Gagal mengubah status tagihan"); }
     setTogglingId(null);
     setTimeout(() => setRekapMsg(""), 3000);
@@ -2115,7 +2123,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
     setMassalForm({ jenis: "", jumlah: "", semester: "", status: "belum", kirim_notif: true });
     setMassalSantri([]);
     if (selectedUser) loadTagihan(selectedUser.id);
-    onRefreshSantri();
+    onRefreshSantri(true);
     setTimeout(() => setMsg(""), 4000);
   };
 
