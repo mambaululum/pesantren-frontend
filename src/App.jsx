@@ -684,6 +684,21 @@ function Dashboard({ user, onLogout }) {
       return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
 
+  // Kelompokkan tagihan yang sudah terurut di atas menjadi grup per semester.
+  // Karena `filtered` sudah diurutkan berdasarkan semester (terbaru dulu) lalu bulan,
+  // tagihan dengan semester yang sama sudah pasti berurutan (contiguous), jadi cukup
+  // pecah array jadi grup baru setiap kali nama semester berubah.
+  const groupedFiltered = filtered.reduce((acc, item) => {
+    const key = item.semester || "Tanpa Semester";
+    const last = acc[acc.length - 1];
+    if (last && last.semester === key) {
+      last.items.push(item);
+    } else {
+      acc.push({ semester: key, items: [item] });
+    }
+    return acc;
+  }, []);
+
   const handleLogout = async () => {
     if (!confirm("Yakin ingin keluar dari akun?")) return;
     await cabutPushSubscription(localStorage.getItem("token"));
@@ -823,74 +838,91 @@ function Dashboard({ user, onLogout }) {
           ) : filtered.length === 0 ? (
             <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>Tidak ada data tagihan.</div>
           ) : (
-            filtered.map(item => {
-              const sudahCicil = Number(item.sudah_dicicil || 0);
-              const jumlah = Number(item.jumlah || 0);
-              const sisa = jumlah - sudahCicil;
-              const adaCicilan = item.status !== "lunas" && sudahCicil > 0;
-              const persenCicil = jumlah > 0 ? Math.min(100, Math.round((sudahCicil / jumlah) * 100)) : 0;
-
-              return (
-                <div key={item.id} style={{
-                  padding: "14px 20px",
-                  borderBottom: "1px solid #f1f5f9",
-                  background: item.status === "lunas" ? "white" : adaCicilan ? "#fffbeb" : "#fffbeb0a",
+            groupedFiltered.map((group, gi) => (
+              <div key={group.semester + gi}>
+                {/* HEADER GRUP SEMESTER */}
+                <div style={{
+                  padding: "10px 20px",
+                  background: "#f1f5f9",
+                  borderBottom: "1px solid #e2e8f0",
+                  borderTop: gi === 0 ? "none" : "1px solid #e2e8f0",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#475569",
+                  letterSpacing: "0.3px",
+                  position: "sticky",
+                  top: 0,
                 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    {/* KIRI: info tagihan */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>{item.jenis}</div>
-
-                      {/* Status label */}
-                      <div style={{ fontSize: 12, marginTop: 3, color: "#94a3b8" }}>
-                        {item.status === "lunas"
-                          ? `✅ Lunas · ${formatTanggal(item.tanggal_bayar)}`
-                          : adaCicilan
-                            ? `🔄 Sedang dicicil · sisa ${formatRupiah(sisa)}`
-                            : "⏳ Belum dibayar"}
-                      </div>
-
-                      {/* Progress cicilan */}
-                      {adaCicilan && (
-                        <div style={{ marginTop: 8 }}>
-                          <div style={{ height: 6, width: "min(200px, 100%)", background: "#e5e7eb", borderRadius: 999 }}>
-                            <div style={{
-                              height: "100%",
-                              width: `${persenCicil}%`,
-                              background: "linear-gradient(90deg, #f59e0b, #fbbf24)",
-                              borderRadius: 999,
-                              transition: "width 0.4s"
-                            }} />
-                          </div>
-                          <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                            Cicilan: <b>{formatRupiah(sudahCicil)}</b> dari {formatRupiah(jumlah)} ({persenCicil}%)
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* KANAN: jumlah & sisa */}
-                    <div style={{ textAlign: "right", marginLeft: 12, flexShrink: 0 }}>
-                      <div style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: item.status === "lunas" ? "#059669" : adaCicilan ? "#d97706" : "#dc2626"
-                      }}>
-                        {formatRupiah(jumlah)}
-                      </div>
-                      {adaCicilan && (
-                        <div style={{ fontSize: 11, color: "#dc2626", fontWeight: 600, marginTop: 2 }}>
-                          Sisa: {formatRupiah(sisa)}
-                        </div>
-                      )}
-                      {item.semester && (
-                        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{item.semester}</div>
-                      )}
-                    </div>
-                  </div>
+                  📅 {group.semester}
                 </div>
-              );
-            })
+
+                {group.items.map(item => {
+                  const sudahCicil = Number(item.sudah_dicicil || 0);
+                  const jumlah = Number(item.jumlah || 0);
+                  const sisa = jumlah - sudahCicil;
+                  const adaCicilan = item.status !== "lunas" && sudahCicil > 0;
+                  const persenCicil = jumlah > 0 ? Math.min(100, Math.round((sudahCicil / jumlah) * 100)) : 0;
+
+                  return (
+                    <div key={item.id} style={{
+                      padding: "14px 20px",
+                      borderBottom: "1px solid #f1f5f9",
+                      background: item.status === "lunas" ? "white" : adaCicilan ? "#fffbeb" : "#fffbeb0a",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        {/* KIRI: info tagihan */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>{item.jenis}</div>
+
+                          {/* Status label */}
+                          <div style={{ fontSize: 12, marginTop: 3, color: "#94a3b8" }}>
+                            {item.status === "lunas"
+                              ? `✅ Lunas · ${formatTanggal(item.tanggal_bayar)}`
+                              : adaCicilan
+                                ? `🔄 Sedang dicicil · sisa ${formatRupiah(sisa)}`
+                                : "⏳ Belum dibayar"}
+                          </div>
+
+                          {/* Progress cicilan */}
+                          {adaCicilan && (
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{ height: 6, width: "min(200px, 100%)", background: "#e5e7eb", borderRadius: 999 }}>
+                                <div style={{
+                                  height: "100%",
+                                  width: `${persenCicil}%`,
+                                  background: "linear-gradient(90deg, #f59e0b, #fbbf24)",
+                                  borderRadius: 999,
+                                  transition: "width 0.4s"
+                                }} />
+                              </div>
+                              <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                                Cicilan: <b>{formatRupiah(sudahCicil)}</b> dari {formatRupiah(jumlah)} ({persenCicil}%)
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* KANAN: jumlah & sisa */}
+                        <div style={{ textAlign: "right", marginLeft: 12, flexShrink: 0 }}>
+                          <div style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            color: item.status === "lunas" ? "#059669" : adaCicilan ? "#d97706" : "#dc2626"
+                          }}>
+                            {formatRupiah(jumlah)}
+                          </div>
+                          {adaCicilan && (
+                            <div style={{ fontSize: 11, color: "#dc2626", fontWeight: 600, marginTop: 2 }}>
+                              Sisa: {formatRupiah(sisa)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
           )}
 
           {/* FOOTER TABEL */}
