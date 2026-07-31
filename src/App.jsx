@@ -371,6 +371,9 @@ function NotifikasiPanel({ token }) {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [modePilih, setModePilih] = useState(false);
+  const [terpilih, setTerpilih] = useState(new Set());
+  const [menghapus, setMenghapus] = useState(false);
   const sudahDipushRef = useRef(new Set());
   const panelRef = useRef(null);
 
@@ -485,16 +488,55 @@ useEffect(() => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, sudah_dibaca: true } : n));
   };
 
-  const handleKlikNotif = async (n) => {
-    await tandaiBaca(n.id);
-    setDetail(n);
-  };
-
   const bacaSemua = async () => {
     await axios.patch(`${API}/admin/notifikasi/baca-semua`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setNotifs(prev => prev.map(n => ({ ...n, sudah_dibaca: true })));
+  };
+
+  // ==== Mode pilih & hapus notifikasi ====
+  const toggleModePilih = () => {
+    setModePilih(prev => !prev);
+    setTerpilih(new Set());
+  };
+
+  const toggleSatuNotif = (id) => {
+    setTerpilih(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const semuaSudahDipilih = notifs.length > 0 && terpilih.size === notifs.length;
+  const togglePilihSemua = () => {
+    setTerpilih(semuaSudahDipilih ? new Set() : new Set(notifs.map(n => n.id)));
+  };
+
+  const hapusPilihan = async () => {
+    if (terpilih.size === 0) return;
+    if (!confirm(`Hapus ${terpilih.size} notifikasi terpilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+    setMenghapus(true);
+    try {
+      await axios.delete(`${API}/admin/notifikasi/hapus-pilihan`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { ids: Array.from(terpilih) }
+      });
+      setNotifs(prev => prev.filter(n => !terpilih.has(n.id)));
+      setTerpilih(new Set());
+      setModePilih(false);
+    } catch {
+      alert('Gagal menghapus notifikasi, coba lagi.');
+    } finally {
+      setMenghapus(false);
+    }
+  };
+
+  const handleKlikNotif = async (n) => {
+    if (modePilih) { toggleSatuNotif(n.id); return; }
+    await tandaiBaca(n.id);
+    setDetail(n);
   };
 
   const warnaBadge = { tagihan: '#dc2626', bayar: '#059669', koreksi: '#d97706', info: '#1e40af' };
@@ -574,11 +616,23 @@ useEffect(() => {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>🔔 Notifikasi</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {belumBaca > 0 && (
+                {!modePilih && belumBaca > 0 && (
                   <button onClick={bacaSemua} style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: 12, color: '#1e40af', fontWeight: 600
                   }}>Tandai semua dibaca</button>
+                )}
+                {!modePilih && notifs.length > 0 && (
+                  <button onClick={toggleModePilih} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, color: '#dc2626', fontWeight: 600
+                  }}>🗑️ Pilih</button>
+                )}
+                {modePilih && (
+                  <button onClick={toggleModePilih} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, color: '#64748b', fontWeight: 600
+                  }}>Batal</button>
                 )}
                 <button onClick={() => setOpen(false)} style={{
                   background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer',
@@ -587,6 +641,24 @@ useEffect(() => {
                 }}>✕</button>
               </div>
             </div>
+
+            {modePilih && notifs.length > 0 && (
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: '#fef2f2' }}>
+                <button onClick={togglePilihSemua} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, color: '#1e40af', fontWeight: 600
+                }}>{semuaSudahDipilih ? '☑️ Batal pilih semua' : '⬜ Pilih semua'}</button>
+                <button onClick={hapusPilihan} disabled={terpilih.size === 0 || menghapus} style={{
+                  background: terpilih.size === 0 ? '#fca5a5' : '#dc2626',
+                  border: 'none', borderRadius: 8, color: 'white', fontWeight: 700,
+                  fontSize: 12, padding: '6px 12px',
+                  cursor: terpilih.size === 0 ? 'not-allowed' : 'pointer'
+                }}>{menghapus ? 'Menghapus...' : `Hapus Pilihan${terpilih.size > 0 ? ` (${terpilih.size})` : ''}`}</button>
+              </div>
+            )}
+
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {notifs.length === 0 ? (
                 <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
@@ -595,14 +667,24 @@ useEffect(() => {
               ) : notifs.map(n => (
                 <div key={n.id} onClick={() => handleKlikNotif(n)} style={{
                   padding: '12px 16px', borderBottom: '1px solid #f8fafc',
-                  background: n.sudah_dibaca ? 'white' : '#eff6ff',
+                  background: terpilih.has(n.id) ? '#fee2e2' : (n.sudah_dibaca ? 'white' : '#eff6ff'),
                   cursor: 'pointer', transition: 'background 0.2s'
                 }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
-                      background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
-                    }} />
+                    {modePilih ? (
+                      <input
+                        type="checkbox"
+                        checked={terpilih.has(n.id)}
+                        onChange={() => toggleSatuNotif(n.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 8, height: 8, borderRadius: '50%', marginTop: 6, flexShrink: 0,
+                        background: n.sudah_dibaca ? 'transparent' : (warnaBadge[n.jenis] || '#1e40af')
+                      }} />
+                    )}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 2 }}>{n.judul}</div>
                       <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{n.pesan}</div>
