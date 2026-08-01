@@ -28,6 +28,12 @@ const formatTanggalWIB = (dateStr, opts = { day: "2-digit", month: "short", year
   const d = parseTanggalUTC(dateStr);
   return d ? d.toLocaleDateString("id-ID", { ...opts, timeZone: "Asia/Jakarta" }) : "-";
 };
+
+// Tanggal HARI INI di zona WIB (Asia/Jakarta), format "YYYY-MM-DD" (buat default <input type="date">).
+// Sengaja TIDAK pakai new Date().toISOString().split("T")[0] -> itu tanggal UTC, jadi
+// kalau dipakai jam 00:00-06:59 WIB hasilnya mundur 1 hari (baru ganti hari jam 07:00 pagi WIB).
+// Dihitung eksplisit ke Asia/Jakarta pakai Intl, jadi tetap benar walau zona waktu HP/laptop admin salah set.
+const todayWIB = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 const formatJamWIB = (dateStr, opts = { hour: "2-digit", minute: "2-digit", hour12: false }) => {
   const d = parseTanggalUTC(dateStr);
   return d ? d.toLocaleTimeString("id-ID", { ...opts, timeZone: "Asia/Jakarta" }) : "-";
@@ -904,7 +910,7 @@ function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
   const [tagihan, setTagihan] = useState([]);
   const [selectedTagihan, setSelectedTagihan] = useState(null);
   const [riwayatBayar, setRiwayatBayar] = useState([]);
-  const [form, setForm] = useState({ jumlah_bayar: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+  const [form, setForm] = useState({ jumlah_bayar: "", tanggal_bayar: todayWIB(), keterangan: "" });
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -935,7 +941,7 @@ function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
   // supaya jadi cicilan. Beberapa tagihan boleh sekaligus jadi cicilan dalam 1 transaksi.
   // Bentuk tiap item: { id, jenis, jumlah, sisa, bayar }
   const [itemsBulk, setItemsBulk] = useState([]);
-  const [tanggalBulk, setTanggalBulk] = useState(new Date().toISOString().split("T")[0]);
+  const [tanggalBulk, setTanggalBulk] = useState(todayWIB());
   const [keteranganBulk, setKeteranganBulk] = useState("");
   const [showKonfirmasiBulk, setShowKonfirmasiBulk] = useState(false);
   const [kirimWABulk, setKirimWABulk] = useState(true);
@@ -1037,7 +1043,7 @@ function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
             : t;
         }));
       setItemsBulk([]);
-      setTanggalBulk(new Date().toISOString().split("T")[0]);
+      setTanggalBulk(todayWIB());
       setKeteranganBulk("");
       setAdaItemLain(false);
       setItemsLain([{ keperluan: "", jumlah: "" }]);
@@ -1109,7 +1115,7 @@ function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
       const newCicilan = { id: res.data.id || Date.now(), jumlah_bayar: jumlahBayar, tanggal_bayar: form.tanggal_bayar, keterangan };
       const isLunas = res.data.lunas || kelebihan > 0;
 
-      setForm({ jumlah_bayar: "", tanggal_bayar: new Date().toISOString().split("T")[0], keterangan: "" });
+      setForm({ jumlah_bayar: "", tanggal_bayar: todayWIB(), keterangan: "" });
       setShowKonfirmasiLebih(false);
       setPendingBayar(null);
 
@@ -2108,7 +2114,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
   };
 
   const handleLunas = async (t) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayWIB();
     try {
       await axios.put(`${API}/tagihan/${t.id}`, { jenis: t.jenis, jumlah: t.jumlah, tanggal_bayar: today, status: "lunas", semester: t.semester, keterangan_semester: t.keterangan_semester || "", kirim_notif: false }, { headers });
       setMsg("✅ Lunas! (tanpa notifikasi WA)");
@@ -2145,7 +2151,7 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
   // Toggle lunas/belum satu tagihan dari rekap
   const handleToggleLunas = async (santriObj, t) => {
     setTogglingId(t.id);
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayWIB();
     const newStatus = t.status === "lunas" ? "belum" : "lunas";
     try {
       await axios.put(`${API}/tagihan/${t.id}`, {
@@ -3841,7 +3847,7 @@ function InputPembayaranUmum({ headers, santri }) {
     nama_pembayar: "",
     keperluan: "",
     jumlah: "",
-    tanggal: new Date().toISOString().split("T")[0],
+    tanggal: todayWIB(),
     keterangan: "",
     kategori: "umum",
     no_hp: "",
@@ -3882,7 +3888,7 @@ function InputPembayaranUmum({ headers, santri }) {
     try {
       await axios.post(`${API}/pembayaran-umum`, { ...form, kirim_notif: form.kirim_notif }, { headers });
       setMsg("✅ Pembayaran berhasil dicatat!");
-      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: new Date().toISOString().split("T")[0], keterangan: "", kategori: "umum" });
+      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: todayWIB(), keterangan: "", kategori: "umum" });
       loadRiwayat();
     } catch (e) {
       setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan"));
@@ -4790,7 +4796,7 @@ function Pengumuman({ santri, headers }) {
 // BUKU KAS — catat tanggal, debit, kredit, saldo berjalan & catatan
 // ============================================================
 function BukuKas({ headers }) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = todayWIB();
   const bulanIniStr = todayStr.slice(0, 7); // "YYYY-MM"
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
