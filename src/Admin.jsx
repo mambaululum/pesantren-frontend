@@ -4100,14 +4100,17 @@ function RiwayatPembayaran({ headers }) {
   const [modeHapus, setModeHapus] = useState(false);
   const [dipilih, setDipilih] = useState([]);
 
-  // --- State untuk Cetak Laporan Bulanan (PDF/JPG) ---
-  const [bulanCetak, setBulanCetak] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  // --- State untuk Cetak Rekap (PDF/JPG/Excel) berdasarkan rentang tanggal (dari - sampai) ---
+  const [tglCetakDari, setTglCetakDari] = useState(() => {
+    // Default: awal bulan berjalan (WIB)
+    const t = todayWIB(); // "YYYY-MM-DD"
+    return `${t.slice(0, 7)}-01`;
   });
+  const [tglCetakSampai, setTglCetakSampai] = useState(() => todayWIB());
   const [exportingBulanan, setExportingBulanan] = useState(false);
   const [dataBulanan, setDataBulanan] = useState([]);
   const [loadingBulanan, setLoadingBulanan] = useState(true);
+  const rentangCetakValid = !!(tglCetakDari && tglCetakSampai && tglCetakDari <= tglCetakSampai);
 
   useEffect(() => {
     // Pakai cache kalau data sudah ada
@@ -4126,17 +4129,18 @@ function RiwayatPembayaran({ headers }) {
       .catch(() => setLoading(false));
   }, []);
 
-  // Fetch data laporan bulanan langsung dari server (bukan dari state `data` yang bisa terbatas),
-  // supaya laporan tetap lengkap & akurat untuk bulan manapun, dan payload tetap ringkas.
+  // Fetch data laporan langsung dari server (bukan dari state `data` yang bisa terbatas),
+  // supaya laporan tetap lengkap & akurat untuk rentang tanggal manapun, dan payload tetap ringkas.
   useEffect(() => {
-    const cacheKey = `bulan_${bulanCetak}`;
+    if (!rentangCetakValid) { setDataBulanan([]); setLoadingBulanan(false); return; }
+    const cacheKey = `rentang_${tglCetakDari}_${tglCetakSampai}`;
     if (RiwayatPembayaran._cacheBulanan?.[cacheKey]) {
       setDataBulanan(RiwayatPembayaran._cacheBulanan[cacheKey]);
       setLoadingBulanan(false);
       return;
     }
     setLoadingBulanan(true);
-    axios.get(`${API}/riwayat-pembayaran`, { headers, params: { bulan: bulanCetak } })
+    axios.get(`${API}/riwayat-pembayaran`, { headers, params: { dari: tglCetakDari, sampai: tglCetakSampai } })
       .then(r => {
         const result = Array.isArray(r.data) ? r.data : [];
         const sorted = [...result].sort((a, b) => {
@@ -4150,7 +4154,7 @@ function RiwayatPembayaran({ headers }) {
         setLoadingBulanan(false);
       })
       .catch(() => setLoadingBulanan(false));
-  }, [bulanCetak]);
+  }, [tglCetakDari, tglCetakSampai, rentangCetakValid]);
 
   const filtered = data.filter(r => {
     const cocokSearch =
@@ -4167,10 +4171,9 @@ function RiwayatPembayaran({ headers }) {
 
   // --- Total untuk Laporan Bulanan (cetak PDF/JPG); dataBulanan sudah difilter di server ---
   const totalBulanan = dataBulanan.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
-  const namaBulanCetak = (() => {
-    const [y, m] = bulanCetak.split("-");
-    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
-  })();
+  const labelRentangCetak = rentangCetakValid
+    ? `${formatTanggalWIB(tglCetakDari + "T00:00:00")} — ${formatTanggalWIB(tglCetakSampai + "T00:00:00")}`
+    : "-";
 
   // Kelompokkan pembayaran per santri + tanggal yang sama (satu kali setoran = satu kelompok)
   const sortedForGroup = [...filtered].sort((a, b) => {
@@ -4350,28 +4353,36 @@ function RiwayatPembayaran({ headers }) {
         </div>
       )}
 
-      {/* ====== CETAK LAPORAN BULANAN (PDF / JPG) ====== */}
+      {/* ====== CETAK REKAP PEMBAYARAN (PDF / JPG / Excel) — pilih rentang tanggal ====== */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, marginTop: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>🖨️ Cetak Laporan Pembayaran Bulanan</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>🖨️ Cetak Rekap Pembayaran</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, color: "#64748b" }}>Dari:</div>
             <input
-              type="month"
-              value={bulanCetak}
-              onChange={e => setBulanCetak(e.target.value)}
+              type="date"
+              value={tglCetakDari}
+              onChange={e => setTglCetakDari(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }}
+            />
+            <div style={{ fontSize: 13, color: "#64748b" }}>s/d</div>
+            <input
+              type="date"
+              value={tglCetakSampai}
+              onChange={e => setTglCetakSampai(e.target.value)}
               style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }}
             />
             <TombolExport
               elId="riwayat-bayar-bulanan"
-              filename={`Riwayat-Pembayaran-${bulanCetak}`}
+              filename={`Riwayat-Pembayaran-${tglCetakDari}_sd_${tglCetakSampai}`}
               exporting={exportingBulanan}
               setExporting={setExportingBulanan}
-              disabled={loadingBulanan || dataBulanan.length === 0}
+              disabled={!rentangCetakValid || loadingBulanan || dataBulanan.length === 0}
               getExcel={() => [{
                 name: "Riwayat Pembayaran",
                 colWidths: [4, 14, 26, 10, 22, 16, 24],
                 rows: [
-                  [`RIWAYAT PEMBAYARAN - ${namaBulanCetak}`],
+                  [`RIWAYAT PEMBAYARAN - ${labelRentangCetak}`],
                   [`Total Terbayar: ${dataBulanan.length} transaksi`],
                   [],
                   ["No", "Tanggal", "Nama Santri", "Kelas", "Jenis Tagihan", "Jumlah Bayar", "Keterangan"],
@@ -4385,17 +4396,21 @@ function RiwayatPembayaran({ headers }) {
           </div>
         </div>
 
-        {loadingBulanan ? (
+        {!rentangCetakValid ? (
+          <div style={{ textAlign: "center", color: "#dc2626", padding: 20, fontSize: 14 }}>
+            Tanggal "Dari" harus sebelum atau sama dengan tanggal "Sampai".
+          </div>
+        ) : loadingBulanan ? (
           <LoadingBarData />
         ) : dataBulanan.length === 0 ? (
           <div style={{ textAlign: "center", color: "#94a3b8", padding: 20, fontSize: 14 }}>
-            Belum ada data pembayaran di bulan {namaBulanCetak}
+            Belum ada data pembayaran pada rentang {labelRentangCetak}
           </div>
         ) : (
           <div id="riwayat-bayar-bulanan" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
-            <HeaderLaporan subtitle={`Riwayat Pembayaran — ${namaBulanCetak}`} />
+            <HeaderLaporan subtitle={`Riwayat Pembayaran — ${labelRentangCetak}`} />
             <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 16px", marginBottom: 14, fontWeight: 700, fontSize: 14, color: "#065f46" }}>
-              💰 Total Terbayar Bulan {namaBulanCetak}: {formatRupiah(totalBulanan)} — {dataBulanan.length} transaksi
+              💰 Total Terbayar {labelRentangCetak}: {formatRupiah(totalBulanan)} — {dataBulanan.length} transaksi
             </div>
             <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
