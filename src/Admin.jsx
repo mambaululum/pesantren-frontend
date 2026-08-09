@@ -513,6 +513,71 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [exportingDetail, setExportingDetail] = useState(false);
 
+  // --- State untuk rekap tabel silang (lunas/belum per jenis tagihan) ---
+  const [exportingSilang, setExportingSilang] = useState(false);
+  const [loadingSilang, setLoadingSilang] = useState(false);
+  const [barisSilangMentah, setBarisSilangMentah] = useState([]); // [{ santri, list: [{jenis, semester, status, tanggal_bayar, sudah_dicicil, jumlah}] }]
+  const [semesterOptSilang, setSemesterOptSilang] = useState([]); // daftar nama semester untuk filter
+  const [filterSemesterSilang, setFilterSemesterSilang] = useState(""); // "" = semua semester
+  const [silangDimuat, setSilangDimuat] = useState(false);
+
+  const loadRekapSilang = async () => {
+    setLoadingSilang(true);
+    try {
+      const [hasil, semRes] = await Promise.all([
+        Promise.all(santriSorted.map(async (s) => {
+          const res = await axios.get(`${API}/tagihan/${s.id}`, { headers });
+          const list = (res.data || []).map(t => ({
+            jenis: (t.jenis || "-").trim(),
+            semester: t.semester || "",
+            status: t.status,
+            tanggal_bayar: t.tanggal_bayar,
+            sudah_dicicil: Number(t.sudah_dicicil || 0),
+            jumlah: Number(t.jumlah || 0),
+          }));
+          return { santri: s, list };
+        })),
+        axios.get(`${API}/semester`, { headers }).catch(() => ({ data: [] })),
+      ]);
+
+      const semNames = (semRes.data || []).map(s => s.semester).filter(Boolean);
+      setSemesterOptSilang(semNames);
+      setFilterSemesterSilang(prev => prev || (semNames[0] || ""));
+      setBarisSilangMentah(hasil);
+      setSilangDimuat(true);
+    } catch (e) {
+      alert("Gagal memuat rekap tabel silang: " + e.message);
+    }
+    setLoadingSilang(false);
+  };
+
+  // Nama bulan tahun ajaran — dipakai buat menyingkat nama tagihan bulanan
+  // (mis. "Syahriyah September" -> ditampilkan cukup "September") supaya
+  // header kolom tabel silang tidak kepanjangan. Tagihan non-bulanan
+  // (Kesantrian, Seragam, dll) ditampilkan apa adanya.
+  const BULAN_ID = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+  const namaTagihanSimpel = (jenis) => {
+    const teks = String(jenis || "").trim();
+    const bulan = BULAN_ID.find(b => teks.toLowerCase().includes(b));
+    return bulan ? bulan.charAt(0).toUpperCase() + bulan.slice(1) : teks;
+  };
+
+  // Terapkan filter semester ke data mentah -> baris & kolom yang benar-benar ditampilkan
+  const barisSilang = barisSilangMentah.map(({ santri, list }) => {
+    const dipakai = filterSemesterSilang ? list.filter(t => t.semester === filterSemesterSilang) : list;
+    const sel = {};
+    dipakai.forEach(t => { sel[t.jenis] = t; });
+    return { santri, sel };
+  });
+  const kolomTagihan = (() => {
+    const kolom = [];
+    const seen = new Set();
+    barisSilang.forEach(({ sel }) => {
+      Object.keys(sel).forEach(nama => { if (!seen.has(nama)) { seen.add(nama); kolom.push(nama); } });
+    });
+    return kolom;
+  })();
+
   const santriSorted = [...santri].sort((a, b) => {
     const numA = parseInt(a.kelas) || 99;
     const numB = parseInt(b.kelas) || 99;
@@ -574,6 +639,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
       <div style={{ background: "white", borderRadius: 12, display: "flex", gap: 0, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
         <button style={tabStyle(tab === "semua")} onClick={() => setTab("semua")}>📋 Rekap Keseluruhan</button>
         <button style={tabStyle(tab === "persantri")} onClick={() => setTab("persantri")}>👤 Rekap Per Santri</button>
+        <button style={tabStyle(tab === "silang")} onClick={() => { setTab("silang"); if (!silangDimuat) loadRekapSilang(); }}>↔️ Tabel Lunas/Belum</button>
       </div>
 
       {/* ====== TAB REKAP KESELURUHAN ====== */}
@@ -887,6 +953,122 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ====== TAB TABEL LUNAS/BELUM (SILANG) ====== */}
+      {tab === "silang" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              Baris = nama santri, kolom ke samping = jenis tagihan. Sudah lunas ditampilkan tanggal bayarnya, belum lunas dikosongkan.
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <select
+                value={filterSemesterSilang}
+                onChange={(e) => setFilterSemesterSilang(e.target.value)}
+                disabled={loadingSilang || semesterOptSilang.length === 0}
+                style={{ border: "1.5px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontWeight: 600, color: "#334155", background: "white" }}
+              >
+                <option value="">📅 Semua Semester</option>
+                {semesterOptSilang.map(sem => (
+                  <option key={sem} value={sem}>{sem}</option>
+                ))}
+              </select>
+              <button
+                onClick={loadRekapSilang}
+                disabled={loadingSilang}
+                style={{ background: "#ecfdf5", border: "1.5px solid #a7f3d0", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#065f46", cursor: loadingSilang ? "not-allowed" : "pointer", opacity: loadingSilang ? 0.6 : 1 }}
+              >
+                {loadingSilang ? "⏳ Memuat..." : "🔄 Refresh"}
+              </button>
+              {silangDimuat && (
+                <TombolExport
+                  elId="rekap-silang" filename="Rekap-Lunas-Belum" exporting={exportingSilang} setExporting={setExportingSilang} disabled={loadingSilang}
+                  getExcel={() => [{
+                    name: "Lunas-Belum",
+                    colWidths: [4, 26, 8, ...kolomTagihan.map(() => 16)],
+                    rows: [
+                      ["REKAP LUNAS/BELUM PER JENIS TAGIHAN - PP. MUHAMMADIYAH MAMBAUL ULUM"],
+                      [`Dicetak: ${new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`],
+                      [`Semester: ${filterSemesterSilang || "Semua Semester"}`],
+                      [],
+                      ["No", "Nama Santri", "Kelas", ...kolomTagihan.map(namaTagihanSimpel)],
+                      ...barisSilang.map((row, idx) => {
+                        const cells = kolomTagihan.map(nama => {
+                          const c = row.sel[nama];
+                          if (!c) return "";
+                          if (c.status === "lunas") return c.tanggal_bayar ? formatTanggalWIB(c.tanggal_bayar) : "Lunas";
+                          if (c.sudah_dicicil > 0) return `Cicil ${formatRupiah(c.sudah_dicicil)}`;
+                          return "";
+                        });
+                        return [idx + 1, row.santri.nama_siswa, row.santri.kelas, ...cells];
+                      }),
+                    ],
+                  }]}
+                />
+              )}
+            </div>
+          </div>
+
+          <div id="rekap-silang" style={{ background: "#f1f5f9", padding: 16, borderRadius: 14 }}>
+            <HeaderLaporan subtitle={`Rekap Lunas/Belum · ${filterSemesterSilang || "Semua Semester"}`} />
+
+            {loadingSilang ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>⏳ Memuat data tagihan semua santri...</div>
+            ) : !silangDimuat ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Belum ada data tagihan untuk ditampilkan.</div>
+            ) : kolomTagihan.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Tidak ada tagihan untuk semester "{filterSemesterSilang}".</div>
+            ) : (
+              <div style={{ background: "white", borderRadius: 12, overflow: "auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: "100%" }}>
+                  <thead>
+                    <tr style={{ background: "#065f46" }}>
+                      <th style={{ position: "sticky", left: 0, zIndex: 2, background: "#065f46", color: "white", padding: "8px 10px", textAlign: "left", whiteSpace: "nowrap" }}>Nama Santri</th>
+                      <th style={{ background: "#065f46", color: "white", padding: "8px 8px", textAlign: "left", whiteSpace: "nowrap" }}>Kelas</th>
+                      {kolomTagihan.map(nama => (
+                        <th key={nama} title={nama} style={{ background: "#065f46", color: "white", padding: "8px 10px", textAlign: "center", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.15)" }}>
+                          {namaTagihanSimpel(nama)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {barisSilang.map((row, idx) => (
+                      <tr key={row.santri.id} style={{ borderTop: "1px solid #f1f5f9", background: idx % 2 === 0 ? "white" : "#f8fafc" }}>
+                        <td style={{ position: "sticky", left: 0, zIndex: 1, background: idx % 2 === 0 ? "white" : "#f8fafc", padding: "6px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          {row.santri.nama_siswa}
+                        </td>
+                        <td style={{ padding: "6px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{row.santri.kelas || "-"}</td>
+                        {kolomTagihan.map(nama => {
+                          const c = row.sel[nama];
+                          let isi = "";
+                          let warna = "#cbd5e1";
+                          if (c && c.status === "lunas") {
+                            isi = c.tanggal_bayar ? formatTanggalWIB(c.tanggal_bayar) : "Lunas";
+                            warna = "#059669";
+                          } else if (c && c.sudah_dicicil > 0) {
+                            isi = `Cicil ${formatRupiah(c.sudah_dicicil)}`;
+                            warna = "#d97706";
+                          }
+                          return (
+                            <td key={nama} style={{ padding: "6px 10px", textAlign: "center", whiteSpace: "nowrap", color: warna, fontWeight: isi ? 600 : 400, borderLeft: "1px solid #f1f5f9" }}>
+                              {isi || "—"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ marginTop: 10, fontSize: 10, color: "#94a3b8", textAlign: "center" }}>
+              Dicetak otomatis dari Sistem Keuangan PP. Muhammadiyah Mambaul Ulum
+            </div>
           </div>
         </div>
       )}
