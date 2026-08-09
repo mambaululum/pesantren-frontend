@@ -552,14 +552,22 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
   };
 
   // Nama bulan tahun ajaran — dipakai buat menyingkat nama tagihan bulanan
-  // (mis. "Syahriyah September" -> ditampilkan cukup "September") supaya
-  // header kolom tabel silang tidak kepanjangan. Tagihan non-bulanan
-  // (Kesantrian, Seragam, dll) ditampilkan apa adanya.
-  const BULAN_ID = ["januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember"];
+  // (mis. "Syahriyah September" -> ditampilkan cukup "Sep") supaya header
+  // kolom tabel silang tidak kepanjangan. Tagihan non-bulanan (Kesantrian,
+  // Seragam, dll) disingkat dari kata pertamanya (mis. "Kesantrian" -> "Kes").
+  const BULAN_SINGKAT_ID = {
+    januari: "Jan", februari: "Feb", maret: "Mar", april: "Apr", mei: "Mei", juni: "Jun",
+    juli: "Jul", agustus: "Ags", september: "Sep", oktober: "Okt", november: "Nov", desember: "Des",
+  };
   const namaTagihanSimpel = (jenis) => {
     const teks = String(jenis || "").trim();
-    const bulan = BULAN_ID.find(b => teks.toLowerCase().includes(b));
-    return bulan ? bulan.charAt(0).toUpperCase() + bulan.slice(1) : teks;
+    const lower = teks.toLowerCase();
+    const bulanKey = Object.keys(BULAN_SINGKAT_ID).find(b => lower.includes(b));
+    if (bulanKey) return BULAN_SINGKAT_ID[bulanKey];
+    const kataPertama = teks.split(" ")[0] || teks;
+    if (kataPertama.length <= 4) return kataPertama;
+    const s3 = kataPertama.slice(0, 3);
+    return s3.charAt(0).toUpperCase() + s3.slice(1).toLowerCase();
   };
 
   // Terapkan filter semester ke data mentah -> baris & kolom yang benar-benar ditampilkan
@@ -962,7 +970,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 12, color: "#64748b" }}>
-              Baris = nama santri, kolom ke samping = jenis tagihan. Sudah lunas ditampilkan tanggal bayarnya, belum lunas dikosongkan.
+              Baris = nama santri, kolom ke samping = jenis tagihan (disingkat). ✓ = lunas beserta tanggal bayarnya, belum lunas dikosongkan.
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
@@ -999,7 +1007,7 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                         const cells = kolomTagihan.map(nama => {
                           const c = row.sel[nama];
                           if (!c) return "";
-                          if (c.status === "lunas") return c.tanggal_bayar ? formatTanggalWIB(c.tanggal_bayar) : "Lunas";
+                          if (c.status === "lunas") return c.tanggal_bayar ? `✓ ${formatTanggalWIB(c.tanggal_bayar)}` : "✓";
                           if (c.sudah_dicicil > 0) return `Cicil ${formatRupiah(c.sudah_dicicil)}`;
                           return "";
                         });
@@ -1027,9 +1035,9 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                   <thead>
                     <tr style={{ background: "#065f46" }}>
                       <th style={{ position: "sticky", left: 0, zIndex: 2, background: "#065f46", color: "white", padding: "8px 10px", textAlign: "left", whiteSpace: "nowrap" }}>Nama Santri</th>
-                      <th style={{ background: "#065f46", color: "white", padding: "8px 8px", textAlign: "left", whiteSpace: "nowrap" }}>Kelas</th>
+                      <th style={{ background: "#065f46", color: "white", padding: "8px 6px", textAlign: "left", whiteSpace: "nowrap" }}>Kelas</th>
                       {kolomTagihan.map(nama => (
-                        <th key={nama} title={nama} style={{ background: "#065f46", color: "white", padding: "8px 10px", textAlign: "center", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.15)" }}>
+                        <th key={nama} title={nama} style={{ background: "#065f46", color: "white", padding: "8px 4px", textAlign: "center", whiteSpace: "nowrap", borderLeft: "1px solid rgba(255,255,255,0.15)" }}>
                           {namaTagihanSimpel(nama)}
                         </th>
                       ))}
@@ -1041,20 +1049,22 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
                         <td style={{ position: "sticky", left: 0, zIndex: 1, background: idx % 2 === 0 ? "white" : "#f8fafc", padding: "6px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>
                           {row.santri.nama_siswa}
                         </td>
-                        <td style={{ padding: "6px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{row.santri.kelas || "-"}</td>
+                        <td style={{ padding: "6px 6px", color: "#64748b", whiteSpace: "nowrap" }}>{row.santri.kelas || "-"}</td>
                         {kolomTagihan.map(nama => {
                           const c = row.sel[nama];
                           let isi = "";
                           let warna = "#cbd5e1";
+                          let judul = undefined;
                           if (c && c.status === "lunas") {
-                            isi = c.tanggal_bayar ? formatTanggalWIB(c.tanggal_bayar) : "Lunas";
+                            isi = "✓";
                             warna = "#059669";
+                            judul = c.tanggal_bayar ? `Lunas: ${formatTanggalWIB(c.tanggal_bayar)}` : "Lunas";
                           } else if (c && c.sudah_dicicil > 0) {
                             isi = `Cicil ${formatRupiah(c.sudah_dicicil)}`;
                             warna = "#d97706";
                           }
                           return (
-                            <td key={nama} style={{ padding: "6px 10px", textAlign: "center", whiteSpace: "nowrap", color: warna, fontWeight: isi ? 600 : 400, borderLeft: "1px solid #f1f5f9" }}>
+                            <td key={nama} title={judul} style={{ padding: "6px 4px", textAlign: "center", whiteSpace: "nowrap", color: warna, fontWeight: isi ? 600 : 400, borderLeft: "1px solid #f1f5f9" }}>
                               {isi || "—"}
                             </td>
                           );
