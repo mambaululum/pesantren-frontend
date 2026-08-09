@@ -587,8 +587,8 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
   })();
 
   const santriSorted = [...santri].sort((a, b) => {
-    const numA = parseInt(a.kelas) || 99;
-    const numB = parseInt(b.kelas) || 99;
+    const numA = parseInt((a.kelas || '').replace(/\D/g, '')) || 99;
+    const numB = parseInt((b.kelas || '').replace(/\D/g, '')) || 99;
     if (numA !== numB) return numA - numB;
     return a.nama_siswa.localeCompare(b.nama_siswa, "id");
   });
