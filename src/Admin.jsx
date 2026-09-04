@@ -644,10 +644,10 @@ function RekapKeuangan({ santri, loading, totalTagihan, totalTerbayar, totalTung
       </div>
 
       {/* Tab switch */}
-      <div style={{ background: "white", borderRadius: 12, display: "flex", gap: 0, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
-        <button style={tabStyle(tab === "semua")} onClick={() => setTab("semua")}>📋 Rekap Keseluruhan</button>
-        <button style={tabStyle(tab === "persantri")} onClick={() => setTab("persantri")}>👤 Rekap Per Santri</button>
-        <button style={tabStyle(tab === "silang")} onClick={() => { setTab("silang"); if (!silangDimuat) loadRekapSilang(); }}>↔️ Tabel Lunas/Belum</button>
+      <div style={{ background: "white", borderRadius: 12, display: "flex", gap: 0, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <button style={{ ...tabStyle(tab === "semua"), flexShrink: 0 }} onClick={() => setTab("semua")}>📋 Rekap Keseluruhan</button>
+        <button style={{ ...tabStyle(tab === "persantri"), flexShrink: 0 }} onClick={() => setTab("persantri")}>👤 Rekap Per Santri</button>
+        <button style={{ ...tabStyle(tab === "silang"), flexShrink: 0 }} onClick={() => { setTab("silang"); if (!silangDimuat) loadRekapSilang(); }}>↔️ Tabel Lunas/Belum</button>
       </div>
 
       {/* ====== TAB REKAP KESELURUHAN ====== */}
