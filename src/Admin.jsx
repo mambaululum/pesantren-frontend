@@ -1374,7 +1374,11 @@ function InputCicilan({ santri: santriRaw, headers, onRefreshSantri }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>🧾 Input Pembayaran / Cicilan</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <label style={lStyle}>1. Pilih Santri</label>
@@ -2086,7 +2090,11 @@ function DataSantri({ santri, headers, onRefresh }) {
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>👥 Data Santri ({santri.length})</div>
       <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFotoChange} />
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
       <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
       {Object.entries(
         santri.reduce((acc, s) => {
@@ -2553,7 +2561,11 @@ const [modeHapusMassal, setModeHapusMassal] = useState(false);
         </div>
       )}
 
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       {/* ══════════════ KELOLA TAGIHAN ══════════════ */}
       <>
@@ -3124,7 +3136,11 @@ function TambahSantri({ headers, onRefresh }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>➕ Tambah Santri & Akun Baru</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
       <div style={{ background: "white", borderRadius: 14, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
           <div><label style={lStyle}>Nama Wali / Orang Tua</label><input style={iStyle} placeholder="contoh: Ahmad Fauzi" value={form.nama} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
@@ -3222,7 +3238,11 @@ function Pengingat({ santri, headers }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>🔔 Pengingat Pembayaran</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       {/* KIRIM SEMUA */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -4131,7 +4151,11 @@ function InputPembayaranUmum({ headers, santri }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📜 Riwayat Non-Tagihan & Titip Tabungan</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       {/* RIWAYAT */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -4926,7 +4950,11 @@ function Pengumuman({ santri, headers }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📣 Pengumuman & Broadcast WA</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       {/* FORM PENGUMUMAN */}
       <div style={{ background: "white", borderRadius: 14, padding: 20, marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -5153,7 +5181,11 @@ function BukuKas({ headers }) {
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📒 Buku Kas</div>
-      {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
+      {msg && (
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, minWidth: 260, maxWidth: "90vw", background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `2px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 14, padding: "18px 22px", fontSize: 15, fontWeight: 600, textAlign: "center", color: msg.includes("✅") ? "#065f46" : "#dc2626", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}>
+          {msg}
+        </div>
+      )}
 
       {/* RINGKASAN */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
