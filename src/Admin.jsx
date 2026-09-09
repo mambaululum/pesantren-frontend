@@ -223,8 +223,8 @@ function AdminDashboard({ admin, onLogout }) {
     { key: "tambah_santri", label: "➕ Tambah Santri" },
     { key: "semester", label: "📅 Semester" },
     { key: "pengingat", label: "🔔 Pengingat" },
-    { key: "bayar_umum", label: "💳 Bayar Umum" },
-    { key: "riwayat_bayar", label: "📜 Riwayat Bayar" },
+    { key: "bayar_umum", label: "📜 Riwayat Non-Tagihan & Tabungan" },
+    { key: "riwayat_bayar", label: "📜 Riwayat Bayar Tagihan" },
     { key: "riwayat_notif", label: "📨 Riwayat Notif WA" },
     { key: "pengumuman", label: "📣 Pengumuman" },
     { key: "keuangan", label: "📒 Buku Kas" },
@@ -4042,6 +4042,7 @@ function InputPembayaranUmum({ headers, santri }) {
     tanggal: todayWIB(),
     keterangan: "",
     kategori: "umum",
+    metode_bayar: "tunai",
     no_hp: "",
     kirim_notif: true,
   });
@@ -4052,14 +4053,23 @@ function InputPembayaranUmum({ headers, santri }) {
   const [riwayat, setRiwayat] = useState([]);
   const [loadingRiwayat, setLoadingRiwayat] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterMetode, setFilterMetode] = useState("semua"); // semua | tunai | transfer
+  const [filterKategori, setFilterKategori] = useState("semua");
 
   const kategoriList = [
     { value: "umum", label: "💳 Umum" },
     { value: "jajan", label: "🍜 Uang Jajan / Nitip" },
     { value: "infaq", label: "🕌 Infaq / Sedekah" },
     { value: "kegiatan", label: "🎒 Kegiatan" },
+    { value: "tabungan", label: "🐷 Titip Tabungan" },
     { value: "lainnya", label: "📦 Lainnya" },
   ];
+
+  const metodeList = [
+    { value: "tunai", label: "💵 Tunai" },
+    { value: "transfer", label: "🏦 Transfer" },
+  ];
+  const labelMetode = (m) => m === "transfer" ? "🏦 Transfer" : "💵 Tunai";
 
   const loadRiwayat = async () => {
     setLoadingRiwayat(true);
@@ -4080,7 +4090,7 @@ function InputPembayaranUmum({ headers, santri }) {
     try {
       await axios.post(`${API}/pembayaran-umum`, { ...form, kirim_notif: form.kirim_notif }, { headers });
       setMsg("✅ Pembayaran berhasil dicatat!");
-      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: todayWIB(), keterangan: "", kategori: "umum" });
+      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: todayWIB(), keterangan: "", kategori: "umum", metode_bayar: "tunai" });
       loadRiwayat();
     } catch (e) {
       setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan"));
@@ -4097,17 +4107,26 @@ function InputPembayaranUmum({ headers, santri }) {
     } catch (e) { alert("Gagal hapus: " + (e.response?.data?.message || e.message)); }
   };
 
-  const filtered = riwayat.filter(r =>
-    (r.nama_pembayar || "").toLowerCase().includes(search.toLowerCase()) ||
-    (r.keperluan || "").toLowerCase().includes(search.toLowerCase()) ||
-    (r.kategori || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = riwayat.filter(r => {
+    const cocokSearch =
+      (r.nama_pembayar || "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.keperluan || "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.kategori || "").toLowerCase().includes(search.toLowerCase());
+    const metodeR = r.metode_bayar === "transfer" ? "transfer" : "tunai"; // data lama tanpa metode_bayar dianggap tunai
+    const cocokMetode = filterMetode === "semua" ? true : metodeR === filterMetode;
+    const cocokKategori = filterKategori === "semua" ? true : (r.kategori || "umum") === filterKategori;
+    return cocokSearch && cocokMetode && cocokKategori;
+  });
 
   const totalFiltered = filtered.reduce((s, r) => s + Number(r.jumlah || 0), 0);
+  // Rekap tunai vs transfer — supaya kelihatan berapa uang tunai yang seharusnya masih ada di tangan
+  // vs berapa yang sudah masuk rekening/ATM (transfer), berdasarkan hasil filter yang sedang aktif.
+  const totalTunai = filtered.reduce((s, r) => s + ((r.metode_bayar === "transfer") ? 0 : Number(r.jumlah || 0)), 0);
+  const totalTransfer = filtered.reduce((s, r) => s + ((r.metode_bayar === "transfer") ? Number(r.jumlah || 0) : 0), 0);
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>💳 Input Pembayaran Umum</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>📜 Riwayat Non-Tagihan & Titip Tabungan</div>
       {msg && <div style={{ background: msg.includes("✅") ? "#ecfdf5" : "#fef2f2", border: `1px solid ${msg.includes("✅") ? "#a7f3d0" : "#fecaca"}`, borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontSize: 14, color: msg.includes("✅") ? "#065f46" : "#dc2626" }}>{msg}</div>}
 
       {/* FORM INPUT */}
@@ -4156,6 +4175,17 @@ function InputPembayaranUmum({ headers, santri }) {
             <label style={lStyle}>Tanggal</label>
             <input style={iStyle} type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} />
           </div>
+          <div>
+            <label style={lStyle}>Metode Bayar</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {metodeList.map(m => (
+                <button key={m.value} type="button" onClick={() => setForm({ ...form, metode_bayar: m.value })}
+                  style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: `2px solid ${form.metode_bayar === m.value ? "#059669" : "#e5e7eb"}`, background: form.metode_bayar === m.value ? "#f0fdf4" : "white", fontWeight: 600, fontSize: 13, cursor: "pointer", color: form.metode_bayar === m.value ? "#059669" : "#64748b" }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={lStyle}>Keterangan (opsional)</label>
             <input style={iStyle} placeholder="Catatan tambahan..." value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} />
@@ -4180,14 +4210,45 @@ function InputPembayaranUmum({ headers, santri }) {
       {/* RIWAYAT */}
       <div style={{ background: "white", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontWeight: 700 }}>📋 Riwayat Pembayaran Umum</div>
+          <div style={{ fontWeight: 700 }}>📋 Riwayat Pembayaran Non-Tagihan & Titip Tabungan</div>
           <button onClick={loadRiwayat} style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🔄 Refresh</button>
         </div>
         <input placeholder="Cari nama / keperluan / kategori..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 12px", fontSize: 13, boxSizing: "border-box", marginBottom: 10 }} />
-        <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontWeight: 600, fontSize: 13 }}>
-          💰 Total: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalFiltered)} — {filtered.length} transaksi
+
+        {/* FILTER kategori & metode bayar */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)}
+            style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }}>
+            <option value="semua">Semua Kategori</option>
+            {kategoriList.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+          </select>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[{ value: "semua", label: "Semua" }, ...metodeList].map(m => (
+              <button key={m.value} onClick={() => setFilterMetode(m.value)}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `2px solid ${filterMetode === m.value ? "#059669" : "#e5e7eb"}`, background: filterMetode === m.value ? "#f0fdf4" : "white", fontWeight: 600, fontSize: 12, cursor: "pointer", color: filterMetode === m.value ? "#059669" : "#64748b" }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* RINGKASAN: total keseluruhan + pecahan tunai vs transfer, biar kelihatan berapa uang tunai yang masih harus ada di tangan/ATM */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginBottom: 12 }}>
+          <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px" }}>
+            <div style={{ fontSize: 11, color: "#166534" }}>💰 Total ({filtered.length} transaksi)</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#166534" }}>{formatRupiah(totalFiltered)}</div>
+          </div>
+          <div style={{ background: "#fffbeb", borderRadius: 8, padding: "8px 14px" }}>
+            <div style={{ fontSize: 11, color: "#92400e" }}>💵 Tunai (kas di tangan)</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>{formatRupiah(totalTunai)}</div>
+          </div>
+          <div style={{ background: "#eff6ff", borderRadius: 8, padding: "8px 14px" }}>
+            <div style={{ fontSize: 11, color: "#1e40af" }}>🏦 Transfer (di rekening/ATM)</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#1e40af" }}>{formatRupiah(totalTransfer)}</div>
+          </div>
+        </div>
+
         {loadingRiwayat ? <LoadingBarData /> : filtered.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>Belum ada data</div>
         ) : filtered.map((r, i) => (
@@ -4197,6 +4258,9 @@ function InputPembayaranUmum({ headers, santri }) {
                 <span style={{ fontWeight: 700, fontSize: 14 }}>{r.nama_pembayar}</span>
                 <span style={{ background: "#f1f5f9", borderRadius: 6, padding: "2px 8px", fontSize: 11, color: "#475569" }}>
                   {kategoriList.find(k => k.value === r.kategori)?.label || r.kategori}
+                </span>
+                <span style={{ background: r.metode_bayar === "transfer" ? "#dbeafe" : "#fef3c7", borderRadius: 6, padding: "2px 8px", fontSize: 11, color: r.metode_bayar === "transfer" ? "#1e40af" : "#92400e", fontWeight: 600 }}>
+                  {labelMetode(r.metode_bayar)}
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>{r.keperluan}</div>
