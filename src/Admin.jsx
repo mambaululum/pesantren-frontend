@@ -4298,8 +4298,15 @@ function RiwayatPembayaran({ headers }) {
   const [search, setSearch] = useState("");
   const [tanggalDari, setTanggalDari] = useState("");
   const [tanggalSampai, setTanggalSampai] = useState("");
+  const [filterMetode, setFilterMetode] = useState("semua"); // semua | tunai | transfer
   const [modeHapus, setModeHapus] = useState(false);
   const [dipilih, setDipilih] = useState([]);
+
+  const metodeList = [
+    { value: "tunai", label: "💵 Tunai" },
+    { value: "transfer", label: "🏦 Transfer" },
+  ];
+  const labelMetode = (m) => m === "transfer" ? "🏦 Transfer" : "💵 Tunai";
 
   // --- State untuk Cetak Rekap (PDF/JPG/Excel) berdasarkan rentang tanggal (dari - sampai) ---
   const [tglCetakDari, setTglCetakDari] = useState(() => {
@@ -4365,10 +4372,14 @@ function RiwayatPembayaran({ headers }) {
     const tgl = r.tanggal_bayar ? new Date(r.tanggal_bayar) : null;
     const cocokDari = tanggalDari ? tgl && tgl >= new Date(tanggalDari) : true;
     const cocokSampai = tanggalSampai ? tgl && tgl <= new Date(tanggalSampai + "T23:59:59") : true;
-    return cocokSearch && cocokDari && cocokSampai;
+    const metodeR = r.metode_bayar === "transfer" ? "transfer" : "tunai"; // data lama tanpa metode_bayar dianggap tunai
+    const cocokMetode = filterMetode === "semua" ? true : metodeR === filterMetode;
+    return cocokSearch && cocokDari && cocokSampai && cocokMetode;
   });
 
   const totalBayar = filtered.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
+  const totalTunai = filtered.reduce((s, r) => s + ((r.metode_bayar === "transfer") ? 0 : Number(r.jumlah_bayar || 0)), 0);
+  const totalTransfer = filtered.reduce((s, r) => s + ((r.metode_bayar === "transfer") ? Number(r.jumlah_bayar || 0) : 0), 0);
 
   // --- Total untuk Laporan Bulanan (cetak PDF/JPG); dataBulanan sudah difilter di server ---
   const totalBulanan = dataBulanan.reduce((s, r) => s + Number(r.jumlah_bayar || 0), 0);
@@ -4491,8 +4502,27 @@ function RiwayatPembayaran({ headers }) {
           </button>
         )}
       </div>
-      <div style={{ background: "#e8f5e9", borderRadius: 10, padding: "10px 16px", marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
-        💰 Total Terbayar: {formatRupiah(totalBayar)} — {filtered.length} transaksi
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {[{ value: "semua", label: "Semua" }, ...metodeList].map(m => (
+          <button key={m.value} onClick={() => setFilterMetode(m.value)}
+            style={{ padding: "7px 12px", borderRadius: 8, border: `2px solid ${filterMetode === m.value ? "#059669" : "#e5e7eb"}`, background: filterMetode === m.value ? "#f0fdf4" : "white", fontWeight: 600, fontSize: 12, cursor: "pointer", color: filterMetode === m.value ? "#059669" : "#64748b" }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginBottom: 12 }}>
+        <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px" }}>
+          <div style={{ fontSize: 11, color: "#166534" }}>💰 Total ({filtered.length} transaksi)</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#166534" }}>{formatRupiah(totalBayar)}</div>
+        </div>
+        <div style={{ background: "#fffbeb", borderRadius: 8, padding: "8px 14px" }}>
+          <div style={{ fontSize: 11, color: "#92400e" }}>💵 Tunai (kas di tangan)</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>{formatRupiah(totalTunai)}</div>
+        </div>
+        <div style={{ background: "#eff6ff", borderRadius: 8, padding: "8px 14px" }}>
+          <div style={{ fontSize: 11, color: "#1e40af" }}>🏦 Transfer (di rekening/ATM)</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#1e40af" }}>{formatRupiah(totalTransfer)}</div>
+        </div>
       </div>
       {modeHapus && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -4510,13 +4540,13 @@ function RiwayatPembayaran({ headers }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
+                <tr><td colSpan={modeHapus ? 10 : 9} style={{ textAlign: "center", padding: 24, color: "#94a3b8" }}>Belum ada data pembayaran</td></tr>
               )}
               {groups.map((g, gi) => (
                 <Fragment key={g.key}>
                   {g.items.length > 1 && (
                     <tr style={{ background: "#eff6ff" }}>
-                      <td colSpan={modeHapus ? 8 : 7} style={{ padding: "8px 12px", borderTop: gi > 0 ? "2px solid #bfdbfe" : "none", borderBottom: "1px solid #dbeafe", fontWeight: 700, fontSize: 12.5, color: "#1e40af" }}>
+                      <td colSpan={modeHapus ? 9 : 8} style={{ padding: "8px 12px", borderTop: gi > 0 ? "2px solid #bfdbfe" : "none", borderBottom: "1px solid #dbeafe", fontWeight: 700, fontSize: 12.5, color: "#1e40af" }}>
                         🧾 Satu Setoran — {g.nama_siswa} — {g.tanggal_bayar ? new Date(g.tanggal_bayar).toLocaleDateString("id-ID") : "-"} — {g.items.length} item — Total: {formatRupiah(g.total)}
                       </td>
                     </tr>
@@ -4542,6 +4572,11 @@ function RiwayatPembayaran({ headers }) {
                         {formatRupiah(r.total_tagihan)}
                       </td>
                       <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{r.keterangan || "-"}</td>
+                      <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>
+                        <span style={{ background: r.metode_bayar === "transfer" ? "#dbeafe" : "#fef3c7", borderRadius: 6, padding: "2px 8px", fontSize: 11, color: r.metode_bayar === "transfer" ? "#1e40af" : "#92400e", fontWeight: 600 }}>
+                          {labelMetode(r.metode_bayar)}
+                        </span>
+                      </td>
                       <td style={{ padding: "9px 12px", borderBottom: "1px solid #f1f5f9" }}>
                         <button onClick={() => handleHapus(r.id)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑️</button>
                       </td>
