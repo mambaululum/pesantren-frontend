@@ -4040,7 +4040,6 @@ function InputPembayaranUmum({ headers, santri }) {
     keperluan: "",
     jumlah: "",
     tanggal: todayWIB(),
-    keterangan: "",
     kategori: "umum",
     metode_bayar: "tunai",
     no_hp: "",
@@ -4055,6 +4054,8 @@ function InputPembayaranUmum({ headers, santri }) {
   const [search, setSearch] = useState("");
   const [filterMetode, setFilterMetode] = useState("semua"); // semua | tunai | transfer
   const [filterKategori, setFilterKategori] = useState("semua");
+  const [filterTanggalDari, setFilterTanggalDari] = useState("");
+  const [filterTanggalSampai, setFilterTanggalSampai] = useState("");
 
   const kategoriList = [
     { value: "umum", label: "💳 Umum" },
@@ -4090,7 +4091,7 @@ function InputPembayaranUmum({ headers, santri }) {
     try {
       await axios.post(`${API}/pembayaran-umum`, { ...form, kirim_notif: form.kirim_notif }, { headers });
       setMsg("✅ Pembayaran berhasil dicatat!");
-      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: todayWIB(), keterangan: "", kategori: "umum", metode_bayar: "tunai" });
+      setForm({ nama_pembayar: "", keperluan: "", jumlah: "", tanggal: todayWIB(), kategori: "umum", metode_bayar: "tunai" });
       loadRiwayat();
     } catch (e) {
       setMsg("❌ " + (e.response?.data?.message || "Gagal menyimpan"));
@@ -4115,7 +4116,10 @@ function InputPembayaranUmum({ headers, santri }) {
     const metodeR = r.metode_bayar === "transfer" ? "transfer" : "tunai"; // data lama tanpa metode_bayar dianggap tunai
     const cocokMetode = filterMetode === "semua" ? true : metodeR === filterMetode;
     const cocokKategori = filterKategori === "semua" ? true : (r.kategori || "umum") === filterKategori;
-    return cocokSearch && cocokMetode && cocokKategori;
+    const tglR = r.tanggal ? r.tanggal.slice(0, 10) : "";
+    const cocokTanggalDari = filterTanggalDari ? tglR >= filterTanggalDari : true;
+    const cocokTanggalSampai = filterTanggalSampai ? tglR <= filterTanggalSampai : true;
+    return cocokSearch && cocokMetode && cocokKategori && cocokTanggalDari && cocokTanggalSampai;
   });
 
   const totalFiltered = filtered.reduce((s, r) => s + Number(r.jumlah || 0), 0);
@@ -4186,10 +4190,6 @@ function InputPembayaranUmum({ headers, santri }) {
               ))}
             </div>
           </div>
-          <div style={{ gridColumn: "1/-1" }}>
-            <label style={lStyle}>Keterangan (opsional)</label>
-            <input style={iStyle} placeholder="Catatan tambahan..." value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} />
-          </div>
         </div>
         <div style={{ marginTop: 12, padding: "10px 14px", background: form.kirim_notif ? "#f0fdf4" : "#f8fafc", borderRadius: 10, border: `1px solid ${form.kirim_notif ? "#a7f3d0" : "#e5e7eb"}` }}>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, color: form.kirim_notif ? "#065f46" : "#64748b" }}>
@@ -4233,6 +4233,26 @@ function InputPembayaranUmum({ headers, santri }) {
           </div>
         </div>
 
+        {/* FILTER tanggal (dari - sampai) */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <div>
+            <label style={{ ...lStyle, marginBottom: 4 }}>Dari Tanggal</label>
+            <input type="date" value={filterTanggalDari} onChange={e => setFilterTanggalDari(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }} />
+          </div>
+          <div>
+            <label style={{ ...lStyle, marginBottom: 4 }}>Sampai Tanggal</label>
+            <input type="date" value={filterTanggalSampai} onChange={e => setFilterTanggalSampai(e.target.value)}
+              style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid #ddd", fontSize: 13 }} />
+          </div>
+          {(filterTanggalDari || filterTanggalSampai) && (
+            <button onClick={() => { setFilterTanggalDari(""); setFilterTanggalSampai(""); }}
+              style={{ alignSelf: "flex-end", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>
+              ✕ Reset Tanggal
+            </button>
+          )}
+        </div>
+
         {/* RINGKASAN: total keseluruhan + pecahan tunai vs transfer, biar kelihatan berapa uang tunai yang masih harus ada di tangan/ATM */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginBottom: 12 }}>
           <div style={{ background: "#e8f5e9", borderRadius: 8, padding: "8px 14px" }}>
@@ -4266,7 +4286,6 @@ function InputPembayaranUmum({ headers, santri }) {
               <div style={{ fontSize: 13, color: "#374151", marginTop: 2 }}>{r.keperluan}</div>
               <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
                 {r.tanggal ? new Date(r.tanggal).toLocaleDateString("id-ID") : "-"}
-                {r.keterangan ? ` · ${r.keterangan}` : ""}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
